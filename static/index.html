@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Digital Memory for Students - Machine Learning Revision Assistant</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="/static/css/custom.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#2563eb',
+                        'primary-dark': '#1d4ed8',
+                        accent: '#7c3aed',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col">
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2 max-w-sm pointer-events-none"></div>
+
+    <!-- ========================================================================= -->
+    <!-- 1. LANDING PAGE (VISITOR VIEW)                                            -->
+    <!-- ========================================================================= -->
+    <div id="landing-app" class="flex-1 flex flex-col">
+        <!-- Landing Navbar -->
+        <header class="bg-white border-b border-slate-200 sticky top-0 z-40">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center text-lg font-bold shadow-md shadow-blue-500/20">
+                        <i class="fas fa-brain"></i>
+                    </div>
+                    <div>
+                        <span class="font-bold text-lg text-slate-900 tracking-tight">AI Digital Memory</span>
+                        <span class="hidden sm:inline-block ml-2 text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">for Students</span>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button onclick="loginDemo()" class="px-4 py-2 text-sm font-semibold text-blue-600 hover:bg-blue-50 rounded-lg transition border border-blue-200">
+                        <i class="fas fa-bolt text-amber-500 mr-1.5"></i> 1-Click Demo
+                    </button>
+                    <button onclick="openAuthModal('login')" class="px-4 py-2 text-sm font-semibold text-slate-700 hover:text-slate-900 transition">
+                        Log In
+                    </button>
+                    <button onclick="openAuthModal('register')" class="px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition shadow-sm shadow-blue-600/30">
+                        Sign Up Free
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Hero Section -->
+        <section class="py-16 md:py-24 px-4 max-w-6xl mx-auto text-center flex-1 flex flex-col justify-center">
+            <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-xs font-semibold mb-6 mx-auto">
+                <i class="fas fa-sparkles text-amber-500"></i> Machine Learning Based Personalized Revision System
+            </div>
+            <h1 class="text-4xl sm:text-5xl md:text-6xl font-extrabold text-slate-900 tracking-tight leading-tight mb-6">
+                Never Forget What You Learn. <br>
+                <span class="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent">Study Smarter, Not Harder.</span>
+            </h1>
+            <p class="text-lg md:text-xl text-slate-600 max-w-3xl mx-auto mb-10 leading-relaxed">
+                An intelligent study assistant that maintains a digital memory of your learning history, tracks quiz mistakes, models your forgetting curve with scikit-learn, and tells you exactly what to revise today.
+            </p>
+            <div class="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
+                <button onclick="loginDemo()" class="w-full sm:w-auto px-8 py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-base shadow-lg shadow-blue-600/30 hover:shadow-blue-600/40 transition flex items-center justify-center gap-2">
+                    <i class="fas fa-bolt text-amber-300"></i> Explore Live Demo Account
+                </button>
+                <button onclick="openAuthModal('register')" class="w-full sm:w-auto px-8 py-3.5 bg-white hover:bg-slate-50 text-slate-800 font-bold rounded-xl text-base border border-slate-300 transition flex items-center justify-center gap-2 shadow-sm">
+                    <i class="fas fa-user-plus text-blue-600"></i> Create Free Student Account
+                </button>
+            </div>
+
+            <!-- Features Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
+                <div class="card-soft p-6 rounded-2xl">
+                    <div class="w-12 h-12 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center text-xl mb-4">
+                        <i class="fas fa-database"></i>
+                    </div>
+                    <h3 class="font-bold text-lg text-slate-900 mb-2">Persistent Digital Memory</h3>
+                    <p class="text-sm text-slate-600 leading-relaxed">
+                        Log study sessions, track topics across subjects, record duration, concept difficulties, and notes about challenging concepts.
+                    </p>
+                </div>
+                <div class="card-soft p-6 rounded-2xl">
+                    <div class="w-12 h-12 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center text-xl mb-4">
+                        <i class="fas fa-microchip"></i>
+                    </div>
+                    <h3 class="font-bold text-lg text-slate-900 mb-2">Scikit-Learn ML Retention</h3>
+                    <p class="text-sm text-slate-600 leading-relaxed">
+                        Dual retention modeling combining the Ebbinghaus forgetting curve with Logistic Regression and Random Forest classifiers.
+                    </p>
+                </div>
+                <div class="card-soft p-6 rounded-2xl">
+                    <div class="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center text-xl mb-4">
+                        <i class="fas fa-tasks"></i>
+                    </div>
+                    <h3 class="font-bold text-lg text-slate-900 mb-2">Daily Revision Prioritization</h3>
+                    <p class="text-sm text-slate-600 leading-relaxed">
+                        Get transparent, diagnostic recommendations explaining exactly why a topic needs review with 1-click revision tracking and quizzes.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="py-6 border-t border-slate-200 bg-white text-center text-xs text-slate-500">
+            AI Digital Memory for Students • Built with FastAPI, SQLite, and Scikit-Learn
+        </footer>
+    </div>
+
+
+    <!-- ========================================================================= -->
+    <!-- 2. AUTHENTICATED APP SHELL                                                -->
+    <!-- ========================================================================= -->
+    <div id="auth-app" class="flex-1 flex flex-col hidden">
+        <!-- Top Navigation Bar -->
+        <header class="bg-white border-b border-slate-200 h-16 flex items-center justify-between px-4 sm:px-6 sticky top-0 z-30">
+            <div class="flex items-center gap-3">
+                <button id="sidebar-toggle" class="p-2 rounded-lg text-slate-500 hover:bg-slate-100 transition" title="Toggle Sidebar">
+                    <i class="fas fa-bars text-lg"></i>
+                </button>
+                <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-lg bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center text-base font-bold shadow-sm">
+                        <i class="fas fa-brain"></i>
+                    </div>
+                    <span class="font-bold text-base text-slate-900 hidden sm:inline">AI Digital Memory</span>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <button onclick="openAddSessionModal()" class="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold transition shadow-sm flex items-center gap-1.5">
+                    <i class="fas fa-plus"></i> <span class="hidden sm:inline">Log Study Session</span>
+                </button>
+
+                <!-- Student Profile Pill -->
+                <div class="flex items-center gap-2 pl-2 border-l border-slate-200">
+                    <div id="student-avatar-initial" class="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold">
+                        A
+                    </div>
+                    <div class="hidden md:block text-left">
+                        <div id="student-name-display" class="text-xs font-bold text-slate-800 leading-tight">Alex Chen</div>
+                        <div id="student-email-display" class="text-[11px] text-slate-500 leading-tight">alex.student@example.com</div>
+                    </div>
+                    <button onclick="logout()" class="p-1.5 text-slate-400 hover:text-rose-600 rounded transition ml-1" title="Sign out">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <div class="flex-1 flex">
+            <!-- Collapsible Sidebar -->
+            <aside id="sidebar" class="w-64 bg-white border-r border-slate-200 flex flex-col justify-between p-4 sticky top-16 h-[calc(100vh-4rem)] z-20 overflow-y-auto">
+                <nav class="space-y-1">
+                    <button onclick="switchTab('dashboard')" data-tab="dashboard" class="nav-link w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold bg-blue-50 text-blue-700 transition">
+                        <i class="fas fa-chart-pie w-5 text-center"></i>
+                        <span class="sidebar-text">Dashboard</span>
+                    </button>
+                    <button onclick="switchTab('planner')" data-tab="planner" class="nav-link w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 transition">
+                        <i class="fas fa-brain w-5 text-center text-purple-600"></i>
+                        <span class="sidebar-text">Revision Planner</span>
+                    </button>
+                    <button onclick="switchTab('memory')" data-tab="memory" class="nav-link w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 transition">
+                        <i class="fas fa-history w-5 text-center text-blue-500"></i>
+                        <span class="sidebar-text">Digital Memory</span>
+                    </button>
+                    <button onclick="switchTab('subjects')" data-tab="subjects" class="nav-link w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 transition">
+                        <i class="fas fa-layer-group w-5 text-center text-indigo-500"></i>
+                        <span class="sidebar-text">Subjects & Topics</span>
+                    </button>
+                    <button onclick="switchTab('quizzes')" data-tab="quizzes" class="nav-link w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 transition">
+                        <i class="fas fa-graduation-cap w-5 text-center text-emerald-600"></i>
+                        <span class="sidebar-text">Quiz Center</span>
+                    </button>
+                    <button onclick="switchTab('ml')" data-tab="ml" class="nav-link w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 transition">
+                        <i class="fas fa-robot w-5 text-center text-amber-500"></i>
+                        <span class="sidebar-text">ML Model Lab</span>
+                    </button>
+                    <button onclick="switchTab('profile')" data-tab="profile" class="nav-link w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 transition">
+                        <i class="fas fa-user-cog w-5 text-center text-slate-500"></i>
+                        <span class="sidebar-text">Profile & Goals</span>
+                    </button>
+                </nav>
+
+                <div class="pt-4 border-t border-slate-100 sidebar-text">
+                    <div class="p-3 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-100 text-xs">
+                        <div class="font-bold text-blue-900 flex items-center gap-1.5 mb-1">
+                            <i class="fas fa-shield-alt text-blue-600"></i> ML Assisted
+                        </div>
+                        <p class="text-blue-700 leading-tight">Predicts memory decay using your study duration, quiz scores & mistake history.</p>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Main Content Area -->
+            <main id="main-content" class="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto max-w-7xl mx-auto w-full">
+
+                <!-- ----------------------------------------------------------------- -->
+                <!-- VIEW 1: DASHBOARD                                                 -->
+                <!-- ----------------------------------------------------------------- -->
+                <div id="dashboard-view" class="view-container space-y-6">
+                    <!-- Header -->
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div>
+                            <h2 class="text-2xl font-extrabold text-slate-900">Student Dashboard</h2>
+                            <p class="text-sm text-slate-500">Overview of your study memory, quiz progress, and revision schedule.</p>
+                        </div>
+                        <button onclick="openAddSessionModal()" class="self-start sm:self-auto px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition shadow-sm flex items-center gap-2">
+                            <i class="fas fa-plus"></i> Record Study Session
+                        </button>
+                    </div>
+
+                    <!-- KPI Cards Grid -->
+                    <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+                        <div class="card-soft p-4 rounded-xl">
+                            <div class="text-xs font-medium text-slate-500 mb-1">Topics Studied</div>
+                            <div id="kpi-total-topics" class="text-2xl font-bold text-slate-900">0</div>
+                            <div class="text-[11px] text-blue-600 font-medium mt-1"><i class="fas fa-book-open mr-1"></i> Across all subjects</div>
+                        </div>
+                        <div class="card-soft p-4 rounded-xl">
+                            <div class="text-xs font-medium text-slate-500 mb-1">Study Sessions</div>
+                            <div id="kpi-total-sessions" class="text-2xl font-bold text-slate-900">0</div>
+                            <div class="text-[11px] text-indigo-600 font-medium mt-1"><i class="fas fa-history mr-1"></i> Logged in memory</div>
+                        </div>
+                        <div class="card-soft p-4 rounded-xl">
+                            <div class="text-xs font-medium text-slate-500 mb-1">Average Quiz Score</div>
+                            <div id="kpi-avg-score" class="text-2xl font-bold text-emerald-600">0%</div>
+                            <div class="text-[11px] text-slate-500 font-medium mt-1">Based on test attempts</div>
+                        </div>
+                        <div class="card-soft p-4 rounded-xl">
+                            <div class="text-xs font-medium text-slate-500 mb-1">Needs Revision</div>
+                            <div id="kpi-topics-revision" class="text-2xl font-bold text-rose-600">0</div>
+                            <div class="text-[11px] text-rose-600 font-medium mt-1"><i class="fas fa-exclamation-triangle mr-1"></i> High/Med priority</div>
+                        </div>
+                        <div class="card-soft p-4 rounded-xl col-span-2 md:col-span-1">
+                            <div class="text-xs font-medium text-slate-500 mb-1">Retention Health</div>
+                            <div id="kpi-retention-health" class="text-2xl font-bold text-blue-600">0%</div>
+                            <div class="text-[11px] text-emerald-600 font-medium mt-1"><i class="fas fa-check-circle mr-1"></i> Overall memory health</div>
+                        </div>
+                    </div>
+
+                    <!-- "What Should I Study Today?" Core Section -->
+                    <div class="card-soft p-6 rounded-2xl border-2 border-blue-500/20 bg-gradient-to-r from-blue-50/50 via-white to-indigo-50/30">
+                        <div class="flex items-center gap-2 mb-3">
+                            <span class="w-3 h-3 rounded-full bg-blue-600 animate-ping"></span>
+                            <h3 class="text-sm font-bold uppercase tracking-wider text-blue-900">What should I study today?</h3>
+                        </div>
+                        <div id="study-today-card">
+                            <!-- Populated dynamically via JS -->
+                        </div>
+                    </div>
+
+                    <!-- Charts Grid -->
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <!-- Score Trends Line Chart -->
+                        <div class="card-soft p-5 rounded-xl lg:col-span-2">
+                            <div class="flex items-center justify-between mb-4">
+                                <h4 class="font-bold text-slate-800 text-sm">Quiz Score Performance Trends</h4>
+                                <span class="text-xs text-slate-400">Score (%) over time</span>
+                            </div>
+                            <div class="h-64">
+                                <canvas id="chart-score-trends"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Priority Distribution Doughnut Chart -->
+                        <div class="card-soft p-5 rounded-xl">
+                            <div class="flex items-center justify-between mb-4">
+                                <h4 class="font-bold text-slate-800 text-sm">Revision Priority Breakdown</h4>
+                                <span class="text-xs text-slate-400">By memory urgency</span>
+                            </div>
+                            <div class="h-64 flex items-center justify-center">
+                                <canvas id="chart-priority-dist"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Weekly Study Time Bar Chart & Recent Activity -->
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div class="card-soft p-5 rounded-xl">
+                            <div class="flex items-center justify-between mb-4">
+                                <h4 class="font-bold text-slate-800 text-sm">Daily Study Time (Past 7 Days)</h4>
+                                <span class="text-xs text-slate-400">Minutes</span>
+                            </div>
+                            <div class="h-60">
+                                <canvas id="chart-weekly-study"></canvas>
+                            </div>
+                        </div>
+
+                        <div class="card-soft p-5 rounded-xl lg:col-span-2">
+                            <div class="flex items-center justify-between mb-4">
+                                <h4 class="font-bold text-slate-800 text-sm">Recent Study Activity</h4>
+                                <button onclick="switchTab('memory')" class="text-xs font-semibold text-blue-600 hover:text-blue-700">View All Memory Logs</button>
+                            </div>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr class="text-xs font-semibold text-slate-400 border-b border-slate-100">
+                                            <th class="py-2 px-4">Topic</th>
+                                            <th class="py-2 px-4">Subject</th>
+                                            <th class="py-2 px-4">Date & Time</th>
+                                            <th class="py-2 px-4">Score</th>
+                                            <th class="py-2 px-4">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="recent-activity-tbody">
+                                        <!-- Populated via JS -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ----------------------------------------------------------------- -->
+                <!-- VIEW 2: AI REVISION PLANNER                                       -->
+                <!-- ----------------------------------------------------------------- -->
+                <div id="planner-view" class="view-container space-y-6 hidden">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div>
+                            <h2 class="text-2xl font-extrabold text-slate-900">AI Personalized Revision Planner</h2>
+                            <p class="text-sm text-slate-500">Prioritized revision schedule generated from your retention curve and machine learning models.</p>
+                        </div>
+                        <div class="flex items-center gap-2 bg-slate-100 p-1 rounded-xl text-xs font-semibold">
+                            <button onclick="loadPlanner('ALL')" class="px-3 py-1.5 rounded-lg bg-white shadow-sm text-slate-800">All Topics</button>
+                            <button onclick="loadPlanner('HIGH')" class="px-3 py-1.5 rounded-lg text-rose-700 hover:bg-white/60">High Priority (<span id="planner-count-high">0</span>)</button>
+                            <button onclick="loadPlanner('MEDIUM')" class="px-3 py-1.5 rounded-lg text-amber-700 hover:bg-white/60">Medium (<span id="planner-count-med">0</span>)</button>
+                            <button onclick="loadPlanner('LOW')" class="px-3 py-1.5 rounded-lg text-emerald-700 hover:bg-white/60">Low (<span id="planner-count-low">0</span>)</button>
+                        </div>
+                    </div>
+
+                    <!-- Recommendations Grid -->
+                    <div id="planner-cards-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                        <!-- Populated dynamically via JS -->
+                    </div>
+                </div>
+
+                <!-- ----------------------------------------------------------------- -->
+                <!-- VIEW 3: DIGITAL MEMORY & STUDY SESSIONS                            -->
+                <!-- ----------------------------------------------------------------- -->
+                <div id="memory-view" class="view-container space-y-6 hidden">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div>
+                            <h2 class="text-2xl font-extrabold text-slate-900">Digital Memory & Study History</h2>
+                            <p class="text-sm text-slate-500">Persistent log of all your study sessions, mistakes, scores, and revisions.</p>
+                        </div>
+                        <button onclick="openAddSessionModal()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition shadow-sm flex items-center gap-2">
+                            <i class="fas fa-plus"></i> Add Study Session
+                        </button>
+                    </div>
+
+                    <!-- Search & Filter Controls -->
+                    <div class="card-soft p-4 rounded-xl flex flex-col sm:flex-row items-center gap-3">
+                        <div class="relative flex-1 w-full">
+                            <i class="fas fa-search absolute left-3.5 top-3 text-slate-400 text-xs"></i>
+                            <input id="session-search" oninput="loadMemorySessions()" type="text" placeholder="Search topics, concepts, or notes..." class="w-full pl-9 pr-4 py-2 text-xs rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <select id="session-filter-subject" onchange="loadMemorySessions()" class="w-full sm:w-48 py-2 px-3 text-xs rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">All Subjects</option>
+                        </select>
+                        <select id="session-filter-difficulty" onchange="loadMemorySessions()" class="w-full sm:w-40 py-2 px-3 text-xs rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">All Difficulties</option>
+                            <option value="Easy">Easy</option>
+                            <option value="Medium">Medium</option>
+                            <option value="Hard">Hard</option>
+                        </select>
+                    </div>
+
+                    <!-- Memory Table -->
+                    <div class="card-soft rounded-xl overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead class="bg-slate-50 text-xs font-semibold text-slate-500 border-b border-slate-200">
+                                    <tr>
+                                        <th class="py-3 px-4">Topic</th>
+                                        <th class="py-3 px-4">Subject</th>
+                                        <th class="py-3 px-4">Date</th>
+                                        <th class="py-3 px-4">Difficulty</th>
+                                        <th class="py-3 px-4">Duration</th>
+                                        <th class="py-3 px-4">Quiz Score</th>
+                                        <th class="py-3 px-4">Mistakes</th>
+                                        <th class="py-3 px-4 text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="memory-sessions-tbody">
+                                    <!-- Populated via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ----------------------------------------------------------------- -->
+                <!-- VIEW 4: SUBJECTS & TOPICS                                         -->
+                <!-- ----------------------------------------------------------------- -->
+                <div id="subjects-view" class="view-container space-y-6 hidden">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div>
+                            <h2 class="text-2xl font-extrabold text-slate-900">Subjects & Topics</h2>
+                            <p class="text-sm text-slate-500">Organize your academic courses and individual subject modules.</p>
+                        </div>
+                        <button onclick="openModal('add-subject-modal')" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition shadow-sm flex items-center gap-2">
+                            <i class="fas fa-plus"></i> Add New Subject
+                        </button>
+                    </div>
+
+                    <div id="subjects-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <!-- Populated via JS -->
+                    </div>
+                </div>
+
+                <!-- ----------------------------------------------------------------- -->
+                <!-- VIEW 5: QUIZ CENTER                                               -->
+                <!-- ----------------------------------------------------------------- -->
+                <div id="quizzes-view" class="view-container space-y-6 hidden">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div>
+                            <h2 class="text-2xl font-extrabold text-slate-900">Quiz Center</h2>
+                            <p class="text-sm text-slate-500">Test your mastery with topic-level MCQs. Scores and mistake patterns feed directly into your retention model.</p>
+                        </div>
+                    </div>
+
+                    <!-- Available Topic Quizzes -->
+                    <div class="mb-4">
+                        <h3 class="font-bold text-base text-slate-900 mb-3">Available Topic Quizzes</h3>
+                        <div id="quiz-topics-grid" class="grid grid-cols-1 md:grid-cols-3 gap-5">
+                            <!-- Populated via JS -->
+                        </div>
+                    </div>
+
+                    <!-- Quiz History Table -->
+                    <div class="card-soft rounded-xl p-5">
+                        <h3 class="font-bold text-base text-slate-900 mb-3">Quiz Attempt History</h3>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead class="bg-slate-50 text-xs font-semibold text-slate-500 border-b border-slate-200">
+                                    <tr>
+                                        <th class="py-3 px-4">Topic</th>
+                                        <th class="py-3 px-4">Subject</th>
+                                        <th class="py-3 px-4">Score</th>
+                                        <th class="py-3 px-4">Correct</th>
+                                        <th class="py-3 px-4">Mistakes</th>
+                                        <th class="py-3 px-4">Date Taken</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="quiz-history-tbody">
+                                    <!-- Populated via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ----------------------------------------------------------------- -->
+                <!-- VIEW 6: MACHINE LEARNING MODEL LAB                                -->
+                <!-- ----------------------------------------------------------------- -->
+                <div id="ml-view" class="view-container space-y-6 hidden">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div>
+                            <h2 class="text-2xl font-extrabold text-slate-900">Machine Learning Retention Lab</h2>
+                            <p class="text-sm text-slate-500">Transparent scikit-learn model evaluation, comparison, and feature analysis.</p>
+                        </div>
+                        <button onclick="retrainModels()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold transition shadow-sm flex items-center gap-2">
+                            <i class="fas fa-sync-alt"></i> Retrain Models
+                        </button>
+                    </div>
+
+                    <!-- ML Status Banner -->
+                    <div class="card-soft p-5 rounded-xl flex flex-col md:flex-row items-center justify-between gap-4 bg-gradient-to-r from-indigo-50/50 via-white to-purple-50/50 border border-indigo-100">
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center text-xl font-bold">
+                                <i class="fas fa-microchip"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-slate-900 text-sm">Model Training Status: Active & Validated</h4>
+                                <p class="text-xs text-slate-600 mt-0.5">Trained on <strong id="ml-sample-count">0</strong> labeled student learning records • Last trained: <span id="ml-last-trained" class="font-semibold">Just now</span></p>
+                            </div>
+                        </div>
+                        <div class="text-xs text-slate-500 bg-white px-3 py-2 rounded-lg border border-slate-200">
+                            <strong>Held-out Test Split:</strong> 25% stratified test evaluation
+                        </div>
+                    </div>
+
+                    <!-- Model Comparison Table -->
+                    <div class="card-soft rounded-xl p-5">
+                        <h3 class="font-bold text-sm text-slate-900 mb-3">Model Benchmark Comparison</h3>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead class="bg-slate-50 text-xs font-semibold text-slate-500 border-b border-slate-200">
+                                    <tr>
+                                        <th class="py-3 px-4">Model Architecture</th>
+                                        <th class="py-3 px-4">Accuracy</th>
+                                        <th class="py-3 px-4">Precision</th>
+                                        <th class="py-3 px-4">Recall</th>
+                                        <th class="py-3 px-4">F1-Score</th>
+                                        <th class="py-3 px-4">Test Samples</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="ml-metrics-tbody">
+                                    <!-- Populated via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Feature Importance & Interactive Sandbox -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <!-- Feature Importance -->
+                        <div class="card-soft p-5 rounded-xl">
+                            <h3 class="font-bold text-sm text-slate-900 mb-1">Random Forest Feature Importance</h3>
+                            <p class="text-xs text-slate-500 mb-4">Gini impurity reduction across all decision tree splits.</p>
+                            <div id="ml-feature-importance-bars">
+                                <!-- Populated via JS -->
+                            </div>
+                        </div>
+
+                        <!-- Interactive Inference Sandbox -->
+                        <div class="card-soft p-5 rounded-xl">
+                            <h3 class="font-bold text-sm text-slate-900 mb-1">Interactive ML Inference Sandbox</h3>
+                            <p class="text-xs text-slate-500 mb-4">Simulate how study variables alter forgetting probability in real time.</p>
+                            
+                            <div class="space-y-3 text-xs">
+                                <div>
+                                    <div class="flex justify-between font-medium text-slate-700 mb-1">
+                                        <span>Days Since Last Studied</span>
+                                        <span id="sb-days-val" class="font-bold text-blue-600">6 days</span>
+                                    </div>
+                                    <input id="sb-days" type="range" min="0" max="21" step="0.5" value="6" oninput="runMLSandboxPrediction()" class="w-full accent-blue-600">
+                                </div>
+
+                                <div>
+                                    <div class="flex justify-between font-medium text-slate-700 mb-1">
+                                        <span>Latest Quiz Score (%)</span>
+                                        <span id="sb-score-val" class="font-bold text-blue-600">55%</span>
+                                    </div>
+                                    <input id="sb-score" type="range" min="0" max="100" step="1" value="55" oninput="runMLSandboxPrediction()" class="w-full accent-blue-600">
+                                </div>
+
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <div class="flex justify-between font-medium text-slate-700 mb-1">
+                                            <span>Mistakes Count</span>
+                                            <span id="sb-mistakes-val" class="font-bold text-blue-600">3</span>
+                                        </div>
+                                        <input id="sb-mistakes" type="range" min="0" max="8" step="1" value="3" oninput="runMLSandboxPrediction()" class="w-full accent-blue-600">
+                                    </div>
+                                    <div>
+                                        <div class="flex justify-between font-medium text-slate-700 mb-1">
+                                            <span>Revisions Count</span>
+                                            <span id="sb-revisions-val" class="font-bold text-blue-600">1</span>
+                                        </div>
+                                        <input id="sb-revisions" type="range" min="0" max="5" step="1" value="1" oninput="runMLSandboxPrediction()" class="w-full accent-blue-600">
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="block font-medium text-slate-700 mb-1">Duration (min)</label>
+                                        <input id="sb-duration" type="number" value="45" onchange="runMLSandboxPrediction()" class="w-full p-2 border border-slate-200 rounded-lg">
+                                    </div>
+                                    <div>
+                                        <label class="block font-medium text-slate-700 mb-1">Difficulty</label>
+                                        <select id="sb-difficulty" onchange="runMLSandboxPrediction()" class="w-full p-2 border border-slate-200 rounded-lg">
+                                            <option value="1">Easy</option>
+                                            <option value="2" selected>Medium</option>
+                                            <option value="3">Hard</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Live Prediction Results -->
+                            <div id="sb-result-card" class="mt-4 p-4 rounded-xl bg-slate-50 border border-slate-200">
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="text-xs text-slate-500">Forgetting Probability:</span>
+                                    <span id="sb-res-prob" class="text-lg font-extrabold text-slate-900">0%</span>
+                                </div>
+                                <div id="sb-res-badge" class="inline-block px-2.5 py-0.5 rounded-full text-xs font-bold mb-3">
+                                    Calculating...
+                                </div>
+                                <div id="sb-res-breakdown" class="text-xs space-y-1 mb-2"></div>
+                                <ul id="sb-res-risks" class="text-xs text-slate-600 space-y-1 pt-2 border-t border-slate-200"></ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ----------------------------------------------------------------- -->
+                <!-- VIEW 7: PROFILE & SETTINGS                                        -->
+                <!-- ----------------------------------------------------------------- -->
+                <div id="profile-view" class="view-container space-y-6 hidden">
+                    <div class="max-w-2xl">
+                        <h2 class="text-2xl font-extrabold text-slate-900 mb-1">Student Profile & Settings</h2>
+                        <p class="text-sm text-slate-500 mb-6">Manage your study goals, daily time targets, and account preferences.</p>
+
+                        <form onsubmit="handleProfileSubmit(event)" class="card-soft p-6 rounded-2xl space-y-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Student Name</label>
+                                <input id="prof-name" type="text" required class="w-full p-2.5 text-sm rounded-lg border border-slate-200 focus:ring-2 focus:ring-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Email Address</label>
+                                <input id="prof-email" type="email" disabled class="w-full p-2.5 text-sm rounded-lg border border-slate-200 bg-slate-100 text-slate-500 cursor-not-allowed">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Study Goals</label>
+                                <textarea id="prof-goals" rows="3" class="w-full p-2.5 text-sm rounded-lg border border-slate-200 focus:ring-2 focus:ring-blue-500"></textarea>
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-700 mb-1">Daily Target Study Time (Minutes)</label>
+                                    <input id="prof-target-min" type="number" min="15" max="480" class="w-full p-2.5 text-sm rounded-lg border border-slate-200 focus:ring-2 focus:ring-blue-500">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-700 mb-1">Target Subjects / Focus</label>
+                                    <input id="prof-subjects" type="text" class="w-full p-2.5 text-sm rounded-lg border border-slate-200 focus:ring-2 focus:ring-blue-500">
+                                </div>
+                            </div>
+                            <div class="pt-4 border-t border-slate-100 flex justify-end">
+                                <button type="submit" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition shadow-sm">
+                                    Save Profile Settings
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+            </main>
+        </div>
+    </div>
+
+
+    <!-- ========================================================================= -->
+    <!-- MODALS                                                                    -->
+    <!-- ========================================================================= -->
+
+    <!-- Auth Modal (Login / Register) -->
+    <div id="auth-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl animate-fade-in relative">
+            <button onclick="closeAuthModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-lg">
+                <i class="fas fa-times"></i>
+            </button>
+
+            <!-- 1-Click Demo Banner -->
+            <div class="mb-5 p-3 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-between">
+                <div>
+                    <div class="text-xs font-bold text-blue-900">Want to test instantly?</div>
+                    <div class="text-[11px] text-blue-700">Preloaded with courses, quizzes & ML records.</div>
+                </div>
+                <button onclick="loginDemo()" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg transition shadow-sm">
+                    Demo Login
+                </button>
+            </div>
+
+            <!-- Tab Switcher -->
+            <div class="flex border-b border-slate-200 mb-5">
+                <button id="tab-auth-login" onclick="switchAuthForm('login')" class="w-1/2 py-2 text-sm font-semibold text-blue-600 border-b-2 border-blue-600">
+                    Log In
+                </button>
+                <button id="tab-auth-register" onclick="switchAuthForm('register')" class="w-1/2 py-2 text-sm font-medium text-slate-500 border-b border-slate-200 hover:text-slate-700">
+                    Create Account
+                </button>
+            </div>
+
+            <!-- Login Form -->
+            <form id="login-form-container" onsubmit="handleLoginSubmit(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Email Address</label>
+                    <input id="login-email" type="email" required value="alex.student@example.com" class="w-full p-2.5 text-sm rounded-lg border border-slate-200 focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Password</label>
+                    <input id="login-password" type="password" required value="password123" class="w-full p-2.5 text-sm rounded-lg border border-slate-200 focus:ring-2 focus:ring-blue-500">
+                </div>
+                <button type="submit" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-sm transition shadow-sm">
+                    Sign In
+                </button>
+            </form>
+
+            <!-- Register Form -->
+            <form id="reg-form-container" onsubmit="handleRegisterSubmit(event)" class="space-y-3 hidden">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Full Name</label>
+                    <input id="reg-name" type="text" required placeholder="Alex Chen" class="w-full p-2 text-sm rounded-lg border border-slate-200 focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Email Address</label>
+                    <input id="reg-email" type="email" required placeholder="alex@university.edu" class="w-full p-2 text-sm rounded-lg border border-slate-200 focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Password</label>
+                    <input id="reg-password" type="password" required placeholder="••••••••" class="w-full p-2 text-sm rounded-lg border border-slate-200 focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Subjects of Interest</label>
+                    <input id="reg-subjects" type="text" placeholder="Computer Science, Mathematics" class="w-full p-2 text-sm rounded-lg border border-slate-200 focus:ring-2 focus:ring-blue-500">
+                </div>
+                <button type="submit" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-sm transition shadow-sm mt-2">
+                    Create Account
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Log Study Session Modal -->
+    <div id="add-session-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl animate-fade-in relative max-h-[90vh] overflow-y-auto">
+            <button onclick="closeModal('add-session-modal')" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-lg">
+                <i class="fas fa-times"></i>
+            </button>
+            <h3 class="text-lg font-bold text-slate-900 mb-4">Record Study Session</h3>
+            <form onsubmit="handleAddSessionSubmit(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Topic</label>
+                    <select id="new-session-topic" required class="w-full p-2.5 text-xs rounded-lg border border-slate-200"></select>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Study Date</label>
+                        <input id="new-session-date" type="date" required class="w-full p-2 text-xs rounded-lg border border-slate-200">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Duration (minutes)</label>
+                        <input id="new-session-duration" type="number" min="5" max="360" value="45" required class="w-full p-2 text-xs rounded-lg border border-slate-200">
+                    </div>
+                </div>
+                <div class="grid grid-cols-3 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Difficulty</label>
+                        <select id="new-session-diff" class="w-full p-2 text-xs rounded-lg border border-slate-200">
+                            <option value="Easy">Easy</option>
+                            <option value="Medium" selected>Medium</option>
+                            <option value="Hard">Hard</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Quiz Score (%)</label>
+                        <input id="new-session-score" type="number" min="0" max="100" placeholder="Optional" class="w-full p-2 text-xs rounded-lg border border-slate-200">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Mistakes</label>
+                        <input id="new-session-mistakes" type="number" min="0" max="20" value="0" class="w-full p-2 text-xs rounded-lg border border-slate-200">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Revisions Completed</label>
+                    <input id="new-session-revisions" type="number" min="0" max="10" value="0" class="w-full p-2 text-xs rounded-lg border border-slate-200">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Difficult Concepts & Notes</label>
+                    <textarea id="new-session-notes" rows="2" placeholder="Key takeaways, formulas, or tricky subtopics..." class="w-full p-2 text-xs rounded-lg border border-slate-200"></textarea>
+                </div>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" onclick="closeModal('add-session-modal')" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg shadow-sm">Save to Memory</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Subject Modal -->
+    <div id="add-subject-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl animate-fade-in relative">
+            <button onclick="closeModal('add-subject-modal')" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-lg">
+                <i class="fas fa-times"></i>
+            </button>
+            <h3 class="text-lg font-bold text-slate-900 mb-4">Add Academic Subject</h3>
+            <form onsubmit="handleAddSubjectSubmit(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Subject Name</label>
+                    <input id="new-subject-name" type="text" required placeholder="e.g. Distributed Systems" class="w-full p-2.5 text-xs rounded-lg border border-slate-200">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Course Code</label>
+                        <input id="new-subject-code" type="text" placeholder="e.g. CS420" class="w-full p-2 text-xs rounded-lg border border-slate-200">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Accent Color</label>
+                        <input id="new-subject-color" type="color" value="#2563eb" class="w-full h-9 p-1 rounded-lg border border-slate-200 cursor-pointer">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Description</label>
+                    <textarea id="new-subject-desc" rows="2" placeholder="Course overview and objectives..." class="w-full p-2 text-xs rounded-lg border border-slate-200"></textarea>
+                </div>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" onclick="closeModal('add-subject-modal')" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg shadow-sm">Create Subject</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Topic Modal -->
+    <div id="add-topic-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl animate-fade-in relative">
+            <button onclick="closeModal('add-topic-modal')" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-lg">
+                <i class="fas fa-times"></i>
+            </button>
+            <h3 class="text-lg font-bold text-slate-900 mb-4">Add Study Topic</h3>
+            <form onsubmit="handleAddTopicSubmit(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Parent Subject</label>
+                    <select id="new-topic-subject" required class="w-full p-2.5 text-xs rounded-lg border border-slate-200"></select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Topic Title</label>
+                    <input id="new-topic-title" type="text" required placeholder="e.g. Raft Consensus Algorithm" class="w-full p-2.5 text-xs rounded-lg border border-slate-200">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Estimated Difficulty</label>
+                    <select id="new-topic-diff" class="w-full p-2 text-xs rounded-lg border border-slate-200">
+                        <option value="Easy">Easy</option>
+                        <option value="Medium" selected>Medium</option>
+                        <option value="Hard">Hard</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Initial Notes</label>
+                    <textarea id="new-topic-notes" rows="2" placeholder="Key formulas or principles..." class="w-full p-2 text-xs rounded-lg border border-slate-200"></textarea>
+                </div>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" onclick="closeModal('add-topic-modal')" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg shadow-sm">Save Topic</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Custom Quiz Question Modal -->
+    <div id="add-question-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl animate-fade-in relative max-h-[90vh] overflow-y-auto">
+            <button onclick="closeModal('add-question-modal')" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-lg">
+                <i class="fas fa-times"></i>
+            </button>
+            <h3 class="text-lg font-bold text-slate-900 mb-4">Add Custom Quiz Question</h3>
+            <form onsubmit="handleAddQuestionSubmit(event)" class="space-y-3">
+                <input type="hidden" id="custom-q-topic-id">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Question Prompt</label>
+                    <textarea id="custom-q-text" required rows="2" placeholder="e.g. What is the time complexity of..." class="w-full p-2 text-xs rounded-lg border border-slate-200"></textarea>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Option A</label>
+                        <input id="custom-q-a" type="text" required class="w-full p-2 text-xs rounded-lg border border-slate-200">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Option B</label>
+                        <input id="custom-q-b" type="text" required class="w-full p-2 text-xs rounded-lg border border-slate-200">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Option C</label>
+                        <input id="custom-q-c" type="text" required class="w-full p-2 text-xs rounded-lg border border-slate-200">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Option D</label>
+                        <input id="custom-q-d" type="text" required class="w-full p-2 text-xs rounded-lg border border-slate-200">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Correct Answer</label>
+                        <select id="custom-q-correct" required class="w-full p-2 text-xs rounded-lg border border-slate-200">
+                            <option value="A">Option A</option>
+                            <option value="B">Option B</option>
+                            <option value="C">Option C</option>
+                            <option value="D">Option D</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Explanation (Why is this answer correct?)</label>
+                    <textarea id="custom-q-expl" rows="2" placeholder="Helps during post-quiz review..." class="w-full p-2 text-xs rounded-lg border border-slate-200"></textarea>
+                </div>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" onclick="closeModal('add-question-modal')" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg shadow-sm">Save Question</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Active Quiz Taking Modal -->
+    <div id="quiz-taking-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl animate-fade-in relative max-h-[90vh] flex flex-col">
+            <button onclick="closeModal('quiz-taking-modal')" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-lg">
+                <i class="fas fa-times"></i>
+            </button>
+
+            <!-- Quiz Header -->
+            <div class="pb-3 border-b border-slate-200 mb-4">
+                <div class="flex items-center gap-2">
+                    <span class="px-2 py-0.5 rounded text-xs font-bold bg-blue-100 text-blue-700 uppercase">Quiz In Progress</span>
+                    <span id="quiz-modal-q-count" class="text-xs text-slate-500"></span>
+                </div>
+                <h3 id="quiz-modal-topic-title" class="text-lg font-extrabold text-slate-900 mt-1">Topic Quiz</h3>
+            </div>
+
+            <!-- Quiz Questions Pane -->
+            <div id="quiz-modal-questions-pane" class="flex-1 overflow-y-auto pr-1">
+                <div id="quiz-questions-list">
+                    <!-- Populated dynamically via JS -->
+                </div>
+            </div>
+
+            <!-- Quiz Results Pane (Revealed after submission) -->
+            <div id="quiz-modal-results-pane" class="flex-1 overflow-y-auto pr-1 hidden">
+                <div class="p-6 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 text-center mb-6">
+                    <div id="quiz-res-score" class="text-4xl font-extrabold text-slate-900 mb-1">0%</div>
+                    <div id="quiz-res-badge" class="inline-block mb-2"></div>
+                    <p id="quiz-res-stats" class="text-xs text-slate-600"></p>
+                </div>
+                <h4 class="font-bold text-sm text-slate-900 mb-3">Question Breakdown & Explanations:</h4>
+                <div id="quiz-res-review-list" class="space-y-3">
+                    <!-- Populated via JS -->
+                </div>
+            </div>
+
+            <!-- Modal Footer Actions -->
+            <div class="pt-4 border-t border-slate-200 flex items-center justify-between mt-auto">
+                <button onclick="closeModal('quiz-taking-modal')" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg">
+                    Close
+                </button>
+                <button id="btn-submit-quiz" onclick="submitActiveQuiz()" class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition shadow-sm flex items-center gap-2">
+                    <i class="fas fa-check"></i> Submit Quiz Answers
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main JavaScript Bundle -->
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
