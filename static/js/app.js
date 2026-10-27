@@ -5,6 +5,19 @@
 const API_BASE = "/api";
 const IS_STATIC_HOST = window.location.hostname.includes("github.io") || window.location.protocol === "file:";
 
+// Application State
+const state = {
+    token: localStorage.getItem("adm_token") || null,
+    student: null,
+    currentTab: "dashboard",
+    sidebarCollapsed: false,
+    charts: {},
+    activeQuiz: null,
+    quizAnswers: {},
+    subjects: [],
+    topics: []
+};
+
 // Local Client-Side Mock Database for GitHub Pages / Static Hosting
 const LocalDB = {
     init() {
