@@ -2,6 +2,9 @@
 
 > **A Machine Learning-Based Personalized Revision System designed to help students master topics, retain what they study, and never fall behind.**
 
+🌐 **Live Interactive Web Application:** [https://mayuresh-001.github.io/AI-digital-memory-/](https://mayuresh-001.github.io/AI-digital-memory-/)  
+📁 **GitHub Repository:** [https://github.com/Mayuresh-001/AI-digital-memory-](https://github.com/Mayuresh-001/AI-digital-memory-)
+
 ---
 
 ## 🌟 Overview
