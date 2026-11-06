@@ -281,90 +281,24 @@ def seed_demo_data():
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (student_id, top_id, s_date.strftime("%Y-%m-%d"), dur, diff, score, mistakes, rev_cnt, notes, outcome))
 
-    # 5. Seed Comprehensive MCQ Quizzes
-    quiz_bank = [
-        # Linear Regression
-        (topic_map["Linear Regression"], "What does the slope coefficient represent in a simple linear regression y = beta_0 + beta_1 * x?",
-         "The expected value of y when x is zero",
-         "The change in the mean of y per one-unit increase in x",
-         "The total residual sum of squares",
-         "The correlation coefficient squared",
-         "B", "The slope coefficient (beta_1) quantifies the estimated change in dependent variable y for every 1-unit increase in predictor x."),
+    # 5. Seed Comprehensive MCQ Quizzes (25 questions per topic, 225 total)
+    try:
+        from .question_bank import QUESTIONS
+    except ImportError:
+        try:
+            from question_bank import QUESTIONS
+        except ImportError:
+            import sys
+            sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+            from build_question_bank import QUESTIONS
 
-        (topic_map["Linear Regression"], "Which metric penalizes complex models by factoring in the number of predictors?",
-         "R-squared",
-         "Adjusted R-squared",
-         "Mean Absolute Error",
-         "Root Mean Squared Error",
-         "B", "Adjusted R-squared incorporates a penalty for each additional independent variable added to the model."),
-
-        (topic_map["Linear Regression"], "If the learning rate in gradient descent is excessively large, what occurs?",
-         "Gradient descent converges very slowly",
-         "The parameters overshoot the minimum and cost function may diverge",
-         "The model underfits due to vanishing gradients",
-         "The residuals will automatically equal zero",
-         "B", "An excessively large learning rate causes gradient descent steps to overshoot the global minimum, causing oscillations or divergence."),
-
-        # Neural Network Backpropagation
-        (topic_map["Neural Network Backpropagation"], "Which mathematical tool is the fundamental engine of backpropagation?",
-         "Taylor series expansion",
-         "Multivariable Chain Rule",
-         "Lagrange multipliers",
-         "Singular Value Decomposition",
-         "B", "Backpropagation computes partial derivatives of the loss with respect to every weight by systematically applying the multivariable chain rule backwards."),
-
-        (topic_map["Neural Network Backpropagation"], "What is the derivative of the standard logistic sigmoid function sigma(z)?",
-         "sigma(z) * (1 - sigma(z))",
-         "1 - sigma(z)^2",
-         "exp(-z) / (1 + exp(-z))",
-         "sigma(z) * exp(z)",
-         "A", "The derivative of sigmoid sigma(z) simplifies cleanly to sigma(z) * (1 - sigma(z))."),
-
-        # Binary Search Trees
-        (topic_map["Binary Search Trees"], "Which tree traversal of a valid Binary Search Tree visits nodes in strictly ascending numerical order?",
-         "Pre-order traversal",
-         "In-order traversal",
-         "Post-order traversal",
-         "Level-order traversal",
-         "B", "An in-order traversal (Left, Root, Right) processes keys in non-decreasing sorted order for any binary search tree."),
-
-        (topic_map["Binary Search Trees"], "What is the worst-case time complexity of searching an element in an unbalanced BST of n nodes?",
-         "O(1)",
-         "O(log n)",
-         "O(n)",
-         "O(n log n)",
-         "C", "In a degenerate skewed BST (resembling a linked list), searching takes O(n) linear time."),
-
-        # Dynamic Programming: Knapsack
-        (topic_map["Dynamic Programming: Knapsack"], "What is the time complexity of solving the 0/1 Knapsack problem with n items and capacity W using Dynamic Programming?",
-         "O(n log n)",
-         "O(2^n)",
-         "O(n * W) pseudo-polynomial",
-         "O(W^2)",
-         "C", "The DP table requires computing subproblems for n items and capacities 0..W, giving an O(n*W) pseudo-polynomial runtime."),
-
-        # Eigenvalues and Eigenvectors
-        (topic_map["Eigenvalues and Eigenvectors"], "For a square matrix A, what scalar lambda satisfies A*v = lambda*v for non-zero vector v?",
-         "Determinant",
-         "Trace",
-         "Eigenvalue",
-         "Singular Value",
-         "C", "Lambda is the eigenvalue corresponding to the eigenvector v, scaling v without altering its directional span."),
-
-        # Cellular Respiration
-        (topic_map["Cellular Respiration & Krebs Cycle"], "Where in a eukaryotic cell does the Citric Acid (Krebs) Cycle occur?",
-         "Cytoplasm",
-         "Mitochondrial matrix",
-         "Inner mitochondrial membrane",
-         "Ribosomes",
-         "B", "The citric acid cycle enzymes reside inside the fluid-filled mitochondrial matrix.")
-    ]
-
-    for top_id, q_text, opt_a, opt_b, opt_c, opt_d, ans, expl in quiz_bank:
-        cursor.execute("""
-        INSERT INTO quiz_questions (topic_id, question_text, option_a, option_b, option_c, option_d, correct_option, explanation, created_by)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'system')
-        """, (top_id, q_text, opt_a, opt_b, opt_c, opt_d, ans, expl))
+    for topic_title, q_text, opt_a, opt_b, opt_c, opt_d, ans, expl in QUESTIONS:
+        top_id = topic_map.get(topic_title)
+        if top_id:
+            cursor.execute("""
+            INSERT INTO quiz_questions (topic_id, question_text, option_a, option_b, option_c, option_d, correct_option, explanation, created_by)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'system')
+            """, (top_id, q_text, opt_a, opt_b, opt_c, opt_d, ans, expl))
 
     # 6. Seed Labeled Training Dataset for ML Model (120 realistic benchmark samples)
     # Grounded in cognitive psychology & forgetting curves

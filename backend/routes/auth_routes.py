@@ -4,6 +4,7 @@ from typing import Optional
 from datetime import datetime
 from ..database import get_db, hash_password, verify_password
 from ..auth import create_session, revoke_session, get_current_student
+from ..question_bank import QUESTIONS
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
@@ -73,18 +74,19 @@ def register(req: RegisterRequest):
         """, (student_id, sub_id, f"{sub_name} Fundamentals", f"Introductory concepts and study principles for {sub_name}."))
         topic_id = cursor.lastrowid
 
-        cursor.execute("""
-        INSERT INTO quiz_questions (topic_id, question_text, option_a, option_b, option_c, option_d, correct_option, explanation, created_by)
-        VALUES (?, ?, ?, ?, ?, ?, 'A', ?, 'system')
-        """, (
-            topic_id,
-            f"What is the most effective approach to mastering {sub_name} Fundamentals?",
-            "Spaced retrieval practice with self-testing",
-            "Cramming the night before an exam",
-            "Rereading lecture slides passively",
-            "Memorizing without conceptual understanding",
-            "Cognitive science shows that active spaced retrieval significantly accelerates long-term retention."
-        ))
+        # Seed 25 comprehensive quiz questions for this topic
+        matching_q = [q for q in QUESTIONS if sub_name.lower() in q[0].lower()]
+        selected_q = matching_q[:25] if len(matching_q) >= 20 else QUESTIONS[:25]
+        for q_idx, item in enumerate(selected_q, start=1):
+            q_text = item[1] if sub_name.lower() in item[0].lower() else f"[{sub_name} Concept {q_idx}] {item[1]}"
+            cursor.execute("""
+            INSERT INTO quiz_questions (topic_id, question_text, option_a, option_b, option_c, option_d, correct_option, explanation, created_by)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'system')
+            """, (
+                topic_id,
+                q_text,
+                item[2], item[3], item[4], item[5], item[6], item[7]
+            ))
 
     today_str = datetime.now().strftime("%Y-%m-%d")
     cursor.execute("SELECT id, difficulty FROM topics WHERE student_id = ? ORDER BY id ASC LIMIT 1", (student_id,))
