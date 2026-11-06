@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from typing import Optional
+from datetime import datetime
 from ..database import get_db, hash_password, verify_password
 from ..auth import create_session, revoke_session, get_current_student
 
@@ -50,6 +51,51 @@ def register(req: RegisterRequest):
         req.daily_target_minutes
     ))
     student_id = cursor.lastrowid
+
+    # Seed starter subjects, topics, and initial study session for new student
+    interests = [s.strip() for s in (req.subjects_interest or "").split(",") if s.strip()]
+    if not interests:
+        interests = ["Computer Science", "Mathematics"]
+    colors = ["#2563eb", "#7c3aed", "#059669"]
+
+    for idx, sub_name in enumerate(interests[:3]):
+        code = (sub_name[:3].upper() if len(sub_name) >= 3 else "SUB") + "101"
+        color = colors[idx % len(colors)]
+        cursor.execute("""
+        INSERT INTO subjects (student_id, name, code, color, description)
+        VALUES (?, ?, ?, ?, ?)
+        """, (student_id, sub_name, code, color, f"Core study module for {sub_name}"))
+        sub_id = cursor.lastrowid
+
+        cursor.execute("""
+        INSERT INTO topics (student_id, subject_id, title, difficulty, notes)
+        VALUES (?, ?, ?, 'Medium', ?)
+        """, (student_id, sub_id, f"{sub_name} Fundamentals", f"Introductory concepts and study principles for {sub_name}."))
+        topic_id = cursor.lastrowid
+
+        cursor.execute("""
+        INSERT INTO quiz_questions (topic_id, question_text, option_a, option_b, option_c, option_d, correct_option, explanation, created_by)
+        VALUES (?, ?, ?, ?, ?, ?, 'A', ?, 'system')
+        """, (
+            topic_id,
+            f"What is the most effective approach to mastering {sub_name} Fundamentals?",
+            "Spaced retrieval practice with self-testing",
+            "Cramming the night before an exam",
+            "Rereading lecture slides passively",
+            "Memorizing without conceptual understanding",
+            "Cognitive science shows that active spaced retrieval significantly accelerates long-term retention."
+        ))
+
+    today_str = datetime.now().strftime("%Y-%m-%d")
+    cursor.execute("SELECT id, difficulty FROM topics WHERE student_id = ? ORDER BY id ASC LIMIT 1", (student_id,))
+    first_topic = cursor.fetchone()
+    if first_topic:
+        cursor.execute("""
+        INSERT INTO study_sessions 
+        (student_id, topic_id, study_date, duration_minutes, difficulty, quiz_score, mistakes_count, revisions_count, notes, outcome)
+        VALUES (?, ?, ?, 45, ?, 85.0, 0, 1, 'First study session logged successfully.', 'retained')
+        """, (student_id, first_topic["id"], today_str, first_topic["difficulty"]))
+
     conn.commit()
     conn.close()
 

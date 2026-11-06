@@ -21,34 +21,53 @@ const state = {
 // Local Client-Side Mock Database for GitHub Pages / Static Hosting
 const LocalDB = {
     init() {
-        if (!localStorage.getItem("adm_student")) {
-            localStorage.setItem("adm_student", JSON.stringify({
-                id: 1,
-                name: "Alex Chen",
-                email: "alex.student@example.com",
-                subjects_interest: "Machine Learning, Data Structures, Mathematics",
-                study_goals: "Prepare for Final Exams & Machine Learning Certifications",
-                daily_target_minutes: 90
-            }));
+        if (!localStorage.getItem("adm_students")) {
+            const defaultStudents = [
+                {
+                    id: 1,
+                    name: "Alex Chen",
+                    email: "alex.student@example.com",
+                    password: "password123",
+                    subjects_interest: "Machine Learning, Data Structures, Mathematics",
+                    study_goals: "Prepare for Final Exams & Machine Learning Certifications",
+                    daily_target_minutes: 90
+                }
+            ];
+            // Migrate legacy student if exists
+            const legacy = localStorage.getItem("adm_student");
+            if (legacy) {
+                try {
+                    const parsed = JSON.parse(legacy);
+                    if (parsed && parsed.email && parsed.email !== "alex.student@example.com") {
+                        defaultStudents.push({ ...parsed, password: parsed.password || "password123" });
+                    }
+                } catch(e) {}
+            }
+            localStorage.setItem("adm_students", JSON.stringify(defaultStudents));
         }
+
+        if (!localStorage.getItem("adm_current_student_id")) {
+            localStorage.setItem("adm_current_student_id", "1");
+        }
+
         if (!localStorage.getItem("adm_subjects")) {
             localStorage.setItem("adm_subjects", JSON.stringify([
-                { id: 1, name: "Machine Learning", code: "CS401", color: "#4f46e5", description: "Supervised & deep learning" },
-                { id: 2, name: "Data Structures & Algorithms", code: "CS201", color: "#2563eb", description: "Trees, graphs, and dynamic programming" },
-                { id: 3, name: "Linear Algebra", code: "MATH210", color: "#7c3aed", description: "Vectors, matrices, and eigenvalues" },
-                { id: 4, name: "Cellular Biology", code: "BIO101", color: "#059669", description: "Cellular respiration & metabolic pathways" }
+                { id: 1, student_id: 1, name: "Machine Learning", code: "CS401", color: "#4f46e5", description: "Supervised & deep learning" },
+                { id: 2, student_id: 1, name: "Data Structures & Algorithms", code: "CS201", color: "#2563eb", description: "Trees, graphs, and dynamic programming" },
+                { id: 3, student_id: 1, name: "Linear Algebra", code: "MATH210", color: "#7c3aed", description: "Vectors, matrices, and eigenvalues" },
+                { id: 4, student_id: 1, name: "Cellular Biology", code: "BIO101", color: "#059669", description: "Cellular respiration & metabolic pathways" }
             ]));
         }
         if (!localStorage.getItem("adm_topics")) {
             localStorage.setItem("adm_topics", JSON.stringify([
-                { id: 1, subject_id: 1, title: "Linear Regression", difficulty: "Medium", notes: "Gradient descent and cost function" },
-                { id: 2, subject_id: 1, title: "Neural Network Backpropagation", difficulty: "Hard", notes: "Chain rule and sigmoid derivatives" },
-                { id: 3, subject_id: 2, title: "Binary Search Trees", difficulty: "Easy", notes: "In-order traversal O(log n)" },
-                { id: 4, subject_id: 2, title: "Dynamic Programming: Knapsack", difficulty: "Hard", notes: "2D memoization table O(n*W)" },
-                { id: 5, subject_id: 2, title: "Graph Breadth-First Search", difficulty: "Medium", notes: "Queue-based shortest path" },
-                { id: 6, subject_id: 3, title: "Eigenvalues and Eigenvectors", difficulty: "Hard", notes: "det(A - lambda*I) = 0" },
-                { id: 7, subject_id: 3, title: "Matrix Multiplication & Inverses", difficulty: "Easy", notes: "Row by column dot product" },
-                { id: 8, subject_id: 4, title: "Cellular Respiration & Krebs Cycle", difficulty: "Medium", notes: "Glycolysis and electron transport chain" }
+                { id: 1, student_id: 1, subject_id: 1, title: "Linear Regression", difficulty: "Medium", notes: "Gradient descent and cost function" },
+                { id: 2, student_id: 1, subject_id: 1, title: "Neural Network Backpropagation", difficulty: "Hard", notes: "Chain rule and sigmoid derivatives" },
+                { id: 3, student_id: 1, subject_id: 2, title: "Binary Search Trees", difficulty: "Easy", notes: "In-order traversal O(log n)" },
+                { id: 4, student_id: 1, subject_id: 2, title: "Dynamic Programming: Knapsack", difficulty: "Hard", notes: "2D memoization table O(n*W)" },
+                { id: 5, student_id: 1, subject_id: 2, title: "Graph Breadth-First Search", difficulty: "Medium", notes: "Queue-based shortest path" },
+                { id: 6, student_id: 1, subject_id: 3, title: "Eigenvalues and Eigenvectors", difficulty: "Hard", notes: "det(A - lambda*I) = 0" },
+                { id: 7, student_id: 1, subject_id: 3, title: "Matrix Multiplication & Inverses", difficulty: "Easy", notes: "Row by column dot product" },
+                { id: 8, student_id: 1, subject_id: 4, title: "Cellular Respiration & Krebs Cycle", difficulty: "Medium", notes: "Glycolysis and electron transport chain" }
             ]));
         }
         if (!localStorage.getItem("adm_sessions")) {
@@ -59,14 +78,14 @@ const LocalDB = {
                 return dt.toISOString().split("T")[0];
             };
             localStorage.setItem("adm_sessions", JSON.stringify([
-                { id: 1, topic_id: 1, study_date: daysAgo(7), duration_minutes: 50, difficulty: "Medium", quiz_score: 52, mistakes_count: 4, revisions_count: 1, notes: "Struggled with gradient descent formula.", outcome: "needs_revision" },
-                { id: 2, topic_id: 2, study_date: daysAgo(9), duration_minutes: 65, difficulty: "Hard", quiz_score: 48, mistakes_count: 5, revisions_count: 0, notes: "Confused on sigmoid derivative in backward pass.", outcome: "needs_revision" },
-                { id: 3, topic_id: 4, study_date: daysAgo(5), duration_minutes: 60, difficulty: "Hard", quiz_score: 65, mistakes_count: 2, revisions_count: 1, notes: "Need practice on 2D table drawing.", outcome: "needs_revision" },
-                { id: 4, topic_id: 6, study_date: daysAgo(4), duration_minutes: 45, difficulty: "Hard", quiz_score: 72, mistakes_count: 2, revisions_count: 1, notes: "Roots of 3x3 characteristic polynomial.", outcome: "retained" },
-                { id: 5, topic_id: 5, study_date: daysAgo(3), duration_minutes: 40, difficulty: "Medium", quiz_score: 84, mistakes_count: 1, revisions_count: 2, notes: "Queue logic solid.", outcome: "retained" },
-                { id: 6, topic_id: 8, study_date: daysAgo(2), duration_minutes: 55, difficulty: "Medium", quiz_score: 88, mistakes_count: 1, revisions_count: 2, notes: "Electron transport chain memorized.", outcome: "retained" },
-                { id: 7, topic_id: 3, study_date: daysAgo(1), duration_minutes: 35, difficulty: "Easy", quiz_score: 96, mistakes_count: 0, revisions_count: 3, notes: "Recursive insertions mastered.", outcome: "retained" },
-                { id: 8, topic_id: 7, study_date: daysAgo(0), duration_minutes: 30, difficulty: "Easy", quiz_score: 100, mistakes_count: 0, revisions_count: 2, notes: "Matrix inverse formula clear.", outcome: "retained" }
+                { id: 1, student_id: 1, topic_id: 1, study_date: daysAgo(7), duration_minutes: 50, difficulty: "Medium", quiz_score: 52, mistakes_count: 4, revisions_count: 1, notes: "Struggled with gradient descent formula.", outcome: "needs_revision" },
+                { id: 2, student_id: 1, topic_id: 2, study_date: daysAgo(9), duration_minutes: 65, difficulty: "Hard", quiz_score: 48, mistakes_count: 5, revisions_count: 0, notes: "Confused on sigmoid derivative in backward pass.", outcome: "needs_revision" },
+                { id: 3, student_id: 1, topic_id: 4, study_date: daysAgo(5), duration_minutes: 60, difficulty: "Hard", quiz_score: 65, mistakes_count: 2, revisions_count: 1, notes: "Need practice on 2D table drawing.", outcome: "needs_revision" },
+                { id: 4, student_id: 1, topic_id: 6, study_date: daysAgo(4), duration_minutes: 45, difficulty: "Hard", quiz_score: 72, mistakes_count: 2, revisions_count: 1, notes: "Roots of 3x3 characteristic polynomial.", outcome: "retained" },
+                { id: 5, student_id: 1, topic_id: 5, study_date: daysAgo(3), duration_minutes: 40, difficulty: "Medium", quiz_score: 84, mistakes_count: 1, revisions_count: 2, notes: "Queue logic solid.", outcome: "retained" },
+                { id: 6, student_id: 1, topic_id: 8, study_date: daysAgo(2), duration_minutes: 55, difficulty: "Medium", quiz_score: 88, mistakes_count: 1, revisions_count: 2, notes: "Electron transport chain memorized.", outcome: "retained" },
+                { id: 7, student_id: 1, topic_id: 3, study_date: daysAgo(1), duration_minutes: 35, difficulty: "Easy", quiz_score: 96, mistakes_count: 0, revisions_count: 3, notes: "Recursive insertions mastered.", outcome: "retained" },
+                { id: 8, student_id: 1, topic_id: 7, study_date: daysAgo(0), duration_minutes: 30, difficulty: "Easy", quiz_score: 100, mistakes_count: 0, revisions_count: 2, notes: "Matrix inverse formula clear.", outcome: "retained" }
             ]));
         }
         if (!localStorage.getItem("adm_questions")) {
@@ -81,46 +100,213 @@ const LocalDB = {
         }
         if (!localStorage.getItem("adm_quiz_attempts")) {
             localStorage.setItem("adm_quiz_attempts", JSON.stringify([
-                { id: 1, topic_id: 1, score: 50.0, total_questions: 2, correct_count: 1, mistakes_count: 1, taken_at: "2026-10-25 14:20:00" },
-                { id: 2, topic_id: 3, score: 100.0, total_questions: 1, correct_count: 1, mistakes_count: 0, taken_at: "2026-10-26 16:45:00" }
+                { id: 1, student_id: 1, topic_id: 1, score: 50.0, total_questions: 2, correct_count: 1, mistakes_count: 1, taken_at: "2026-10-25 14:20:00" },
+                { id: 2, student_id: 1, topic_id: 3, score: 100.0, total_questions: 1, correct_count: 1, mistakes_count: 0, taken_at: "2026-10-26 16:45:00" }
             ]));
         }
     },
 
     mockRequest(endpoint, options = {}) {
         LocalDB.init();
-        const student = JSON.parse(localStorage.getItem("adm_student"));
-        const subjects = JSON.parse(localStorage.getItem("adm_subjects"));
-        const topics = JSON.parse(localStorage.getItem("adm_topics"));
-        const sessions = JSON.parse(localStorage.getItem("adm_sessions"));
-        const questions = JSON.parse(localStorage.getItem("adm_questions"));
-        const attempts = JSON.parse(localStorage.getItem("adm_quiz_attempts"));
+        let students = JSON.parse(localStorage.getItem("adm_students") || "[]");
+        let currentStudentId = parseInt(localStorage.getItem("adm_current_student_id")) || (students[0] ? students[0].id : 1);
+        let student = students.find(s => s.id === currentStudentId) || students[0];
+
+        let subjects = JSON.parse(localStorage.getItem("adm_subjects") || "[]");
+        let topics = JSON.parse(localStorage.getItem("adm_topics") || "[]");
+        let sessions = JSON.parse(localStorage.getItem("adm_sessions") || "[]");
+        let questions = JSON.parse(localStorage.getItem("adm_questions") || "[]");
+        let attempts = JSON.parse(localStorage.getItem("adm_quiz_attempts") || "[]");
 
         const url = endpoint.split("?")[0];
         const method = options.method || "GET";
         const body = options.body ? JSON.parse(options.body) : {};
 
-        // Auth
-        if (url === "/auth/me" || url === "/auth/demo-login" || url === "/auth/login") {
-            return { status: "success", token: "local_demo_token_123", student };
+        // 1. REGISTER NEW STUDENT
+        if (url === "/auth/register" && method === "POST") {
+            const email = (body.email || "").toLowerCase().trim();
+            if (!email || !body.password) {
+                throw new Error("Email and password are required.");
+            }
+            if (students.some(s => s.email.toLowerCase() === email)) {
+                throw new Error("A student with this email address already exists.");
+            }
+
+            const newId = Date.now();
+            const newStudent = {
+                id: newId,
+                name: (body.name || "Student").trim(),
+                email: email,
+                password: body.password,
+                subjects_interest: body.subjects_interest || "General Studies",
+                study_goals: body.study_goals || "Master core concepts and improve exam retention",
+                daily_target_minutes: parseInt(body.daily_target_minutes) || 60
+            };
+
+            students.push(newStudent);
+            localStorage.setItem("adm_students", JSON.stringify(students));
+            localStorage.setItem("adm_current_student_id", newStudent.id.toString());
+            localStorage.setItem("adm_current_student", JSON.stringify(newStudent));
+            localStorage.setItem("adm_student", JSON.stringify(newStudent));
+
+            // Create starter subjects for new student based on their interest
+            const rawInterests = (newStudent.subjects_interest || "")
+                .split(",")
+                .map(s => s.trim())
+                .filter(Boolean);
+            const subNames = rawInterests.length ? rawInterests.slice(0, 3) : ["Computer Science", "Mathematics"];
+            const colors = ["#2563eb", "#7c3aed", "#059669"];
+
+            const userSubs = subNames.map((name, idx) => ({
+                id: Date.now() + idx + 1,
+                student_id: newStudent.id,
+                name: name,
+                code: (name.replace(/[^A-Za-z]/g, "").substring(0, 3).toUpperCase() || "SUB") + "101",
+                color: colors[idx % colors.length],
+                description: `Core study module for ${name}`
+            }));
+            subjects.push(...userSubs);
+            localStorage.setItem("adm_subjects", JSON.stringify(subjects));
+
+            // Create 1 starter topic per subject
+            const userTopics = userSubs.map((sub, idx) => ({
+                id: Date.now() + 100 + idx,
+                student_id: newStudent.id,
+                subject_id: sub.id,
+                title: `${sub.name} Fundamentals`,
+                difficulty: "Medium",
+                notes: "Introductory concepts and study notes."
+            }));
+            topics.push(...userTopics);
+            localStorage.setItem("adm_topics", JSON.stringify(topics));
+
+            // Create sample question for first topic
+            questions.push({
+                id: Date.now() + 500,
+                topic_id: userTopics[0].id,
+                question_text: `What is the most effective approach to mastering ${userTopics[0].title}?`,
+                option_a: "Spaced retrieval practice with self-testing",
+                option_b: "Cramming the night before an exam",
+                option_c: "Rereading slides passively",
+                option_d: "Memorizing without understanding concepts",
+                correct_option: "A",
+                explanation: "Cognitive science shows that active spaced retrieval is far superior to passive rereading."
+            });
+            localStorage.setItem("adm_questions", JSON.stringify(questions));
+
+            // Create 1 initial study session so revision planner has immediate data
+            const todayStr = new Date().toISOString().split("T")[0];
+            sessions.unshift({
+                id: Date.now() + 200,
+                student_id: newStudent.id,
+                topic_id: userTopics[0].id,
+                study_date: todayStr,
+                duration_minutes: 45,
+                difficulty: "Medium",
+                quiz_score: 85,
+                mistakes_count: 0,
+                revisions_count: 1,
+                notes: "First study session logged successfully.",
+                outcome: "retained"
+            });
+            localStorage.setItem("adm_sessions", JSON.stringify(sessions));
+
+            return {
+                status: "success",
+                message: "Student account registered successfully.",
+                token: "token_" + newStudent.id,
+                student: newStudent
+            };
         }
+
+        // 2. LOGIN
+        if (url === "/auth/login" && method === "POST") {
+            const email = (body.email || "").toLowerCase().trim();
+            const found = students.find(s => s.email.toLowerCase() === email);
+            if (!found) {
+                throw new Error("Invalid email or password.");
+            }
+            if (found.password && body.password && found.password !== body.password) {
+                throw new Error("Invalid email or password.");
+            }
+            localStorage.setItem("adm_current_student_id", found.id.toString());
+            localStorage.setItem("adm_current_student", JSON.stringify(found));
+            localStorage.setItem("adm_student", JSON.stringify(found));
+            return {
+                status: "success",
+                message: "Logged in successfully.",
+                token: "token_" + found.id,
+                student: found
+            };
+        }
+
+        // 3. DEMO LOGIN
+        if (url === "/auth/demo-login") {
+            let alex = students.find(s => s.email === "alex.student@example.com");
+            if (!alex) {
+                alex = {
+                    id: 1,
+                    name: "Alex Chen",
+                    email: "alex.student@example.com",
+                    password: "password123",
+                    subjects_interest: "Machine Learning, Data Structures, Mathematics",
+                    study_goals: "Prepare for Final Exams & Machine Learning Certifications",
+                    daily_target_minutes: 90
+                };
+                students.push(alex);
+                localStorage.setItem("adm_students", JSON.stringify(students));
+            }
+            localStorage.setItem("adm_current_student_id", "1");
+            localStorage.setItem("adm_current_student", JSON.stringify(alex));
+            localStorage.setItem("adm_student", JSON.stringify(alex));
+            return {
+                status: "success",
+                message: "Logged in as Demo Student (Alex Chen).",
+                token: "local_demo_token_123",
+                student: alex
+            };
+        }
+
+        // 4. ME
+        if (url === "/auth/me") {
+            if (!student) {
+                throw new Error("Authentication required. Please log in.");
+            }
+            return { status: "success", student };
+        }
+
+        // 5. PROFILE UPDATE
         if (url === "/auth/profile" && method === "PUT") {
+            if (!student) throw new Error("Authentication required.");
             Object.assign(student, body);
+            const idx = students.findIndex(s => s.id === student.id);
+            if (idx !== -1) students[idx] = student;
+            localStorage.setItem("adm_students", JSON.stringify(students));
+            localStorage.setItem("adm_current_student", JSON.stringify(student));
             localStorage.setItem("adm_student", JSON.stringify(student));
             return { status: "success", message: "Profile updated successfully.", student };
         }
 
+        // Filter datasets by current student for privacy and isolation
+        const currentStudentIdNum = student ? student.id : 1;
+        const mySubjects = subjects.filter(s => (s.student_id ? s.student_id === currentStudentIdNum : currentStudentIdNum === 1));
+        const mySubjectIds = new Set(mySubjects.map(s => s.id));
+        const myTopics = topics.filter(t => (t.student_id ? t.student_id === currentStudentIdNum : mySubjectIds.has(t.subject_id)));
+        const myTopicIds = new Set(myTopics.map(t => t.id));
+        const mySessions = sessions.filter(s => (s.student_id ? s.student_id === currentStudentIdNum : myTopicIds.has(s.topic_id)));
+        const myAttempts = attempts.filter(a => (a.student_id ? a.student_id === currentStudentIdNum : myTopicIds.has(a.topic_id)));
+
         // Subjects & Topics
         if (url === "/subjects") {
             if (method === "GET") {
-                const subWithCounts = subjects.map(s => ({
+                const subWithCounts = mySubjects.map(s => ({
                     ...s,
-                    topic_count: topics.filter(t => t.subject_id === s.id).length
+                    topic_count: myTopics.filter(t => t.subject_id === s.id).length
                 }));
                 return { status: "success", subjects: subWithCounts };
             }
             if (method === "POST") {
-                const newSub = { id: Date.now(), ...body };
+                const newSub = { id: Date.now(), student_id: currentStudentIdNum, ...body };
                 subjects.push(newSub);
                 localStorage.setItem("adm_subjects", JSON.stringify(subjects));
                 return { status: "success", message: "Subject created.", id: newSub.id };
@@ -135,14 +321,14 @@ const LocalDB = {
 
         if (url === "/topics") {
             if (method === "GET") {
-                const joined = topics.map(t => {
-                    const sub = subjects.find(s => s.id === t.subject_id) || {};
+                const joined = myTopics.map(t => {
+                    const sub = mySubjects.find(s => s.id === t.subject_id) || {};
                     return { ...t, subject_name: sub.name || "General", subject_color: sub.color || "#2563eb" };
                 });
                 return { status: "success", topics: joined };
             }
             if (method === "POST") {
-                const newT = { id: Date.now(), ...body };
+                const newT = { id: Date.now(), student_id: currentStudentIdNum, ...body };
                 topics.push(newT);
                 localStorage.setItem("adm_topics", JSON.stringify(topics));
                 return { status: "success", message: "Topic created.", id: newT.id };
@@ -152,15 +338,15 @@ const LocalDB = {
         // Sessions
         if (url === "/sessions") {
             if (method === "GET") {
-                const joined = sessions.map(s => {
-                    const t = topics.find(tp => tp.id === s.topic_id) || {};
-                    const sub = subjects.find(sb => sb.id === t.subject_id) || {};
+                const joined = mySessions.map(s => {
+                    const t = myTopics.find(tp => tp.id === s.topic_id) || {};
+                    const sub = mySubjects.find(sb => sb.id === t.subject_id) || {};
                     return { ...s, topic_title: t.title || "Topic", subject_name: sub.name || "Subject", subject_color: sub.color || "#2563eb" };
                 }).sort((a, b) => (b.study_date > a.study_date ? 1 : -1));
                 return { status: "success", sessions: joined };
             }
             if (method === "POST") {
-                const newS = { id: Date.now(), ...body };
+                const newS = { id: Date.now(), student_id: currentStudentIdNum, ...body };
                 sessions.unshift(newS);
                 localStorage.setItem("adm_sessions", JSON.stringify(sessions));
                 return { status: "success", message: "Study session logged into Digital Memory.", id: newS.id };
@@ -176,9 +362,9 @@ const LocalDB = {
         // Recommendations / Planner
         if (url === "/planner/recommendations" || url === "/analytics/dashboard") {
             const today = new Date();
-            const plan = topics.map(t => {
-                const sub = subjects.find(s => s.id === t.subject_id) || {};
-                const topSessions = sessions.filter(s => s.topic_id === t.id).sort((a, b) => (b.study_date > a.study_date ? 1 : -1));
+            const plan = myTopics.map(t => {
+                const sub = mySubjects.find(s => s.id === t.subject_id) || {};
+                const topSessions = mySessions.filter(s => s.topic_id === t.id).sort((a, b) => (b.study_date > a.study_date ? 1 : -1));
                 const lastSess = topSessions[0] || {};
                 const studyDate = lastSess.study_date ? new Date(lastSess.study_date) : new Date(today.getTime() - 14 * 86400000);
                 const daysElapsed = Math.max(0.1, Math.round((today - studyDate) / 86400000));
@@ -233,28 +419,28 @@ const LocalDB = {
             }
 
             // Dashboard payload
-            const avgScore = sessions.length ? Math.round(sessions.reduce((acc, s) => acc + (s.quiz_score || 0), 0) / sessions.length) : 0;
+            const avgScore = mySessions.length ? Math.round(mySessions.reduce((acc, s) => acc + (s.quiz_score || 0), 0) / mySessions.length) : 0;
             const avgRetention = plan.length ? Math.round(plan.reduce((acc, p) => acc + p.retention_health_pct, 0) / plan.length) : 0;
-            const recentAct = sessions.slice(0, 6).map(s => {
-                const t = topics.find(tp => tp.id === s.topic_id) || {};
-                const sub = subjects.find(sb => sb.id === t.subject_id) || {};
+            const recentAct = mySessions.slice(0, 6).map(s => {
+                const t = myTopics.find(tp => tp.id === s.topic_id) || {};
+                const sub = mySubjects.find(sb => sb.id === t.subject_id) || {};
                 return { ...s, topic_title: t.title, subject_name: sub.name, subject_color: sub.color };
             });
 
             return {
                 status: "success",
                 kpis: {
-                    total_topics: topics.length,
-                    total_sessions: sessions.length,
-                    total_study_minutes: sessions.reduce((acc, s) => acc + s.duration_minutes, 0),
+                    total_topics: myTopics.length,
+                    total_sessions: mySessions.length,
+                    total_study_minutes: mySessions.reduce((acc, s) => acc + s.duration_minutes, 0),
                     average_quiz_score: avgScore,
                     topics_needing_revision: plan.filter(p => p.priority !== "LOW").length,
                     overall_retention_health: avgRetention
                 },
                 study_today: plan[0] || null,
                 charts: {
-                    score_trends: attempts.map(a => {
-                        const t = topics.find(tp => tp.id === a.topic_id) || {};
+                    score_trends: myAttempts.map(a => {
+                        const t = myTopics.find(tp => tp.id === a.topic_id) || {};
                         return { date: a.taken_at.split(" ")[0], score: a.score, topic: t.title };
                     }),
                     weekly_study: [
@@ -282,7 +468,7 @@ const LocalDB = {
                 sess.revisions_count = (sess.revisions_count || 0) + 1;
                 sess.outcome = "retained";
             } else {
-                sessions.unshift({ id: Date.now(), topic_id: topicId, study_date: todayStr, duration_minutes: 30, difficulty: "Medium", quiz_score: 85, mistakes_count: 0, revisions_count: 1, notes: "Revised today", outcome: "retained" });
+                sessions.unshift({ id: Date.now(), student_id: currentStudentIdNum, topic_id: topicId, study_date: todayStr, duration_minutes: 30, difficulty: "Medium", quiz_score: 85, mistakes_count: 0, revisions_count: 1, notes: "Revised today", outcome: "retained" });
             }
             localStorage.setItem("adm_sessions", JSON.stringify(sessions));
             return { status: "success", message: "Topic marked as revised today. Memory stability updated!" };
@@ -290,10 +476,10 @@ const LocalDB = {
 
         // Quizzes
         if (url === "/quizzes/topics") {
-            const qTopics = topics.map(t => {
-                const sub = subjects.find(s => s.id === t.subject_id) || {};
+            const qTopics = myTopics.map(t => {
+                const sub = mySubjects.find(s => s.id === t.subject_id) || {};
                 const tQuestions = questions.filter(q => q.topic_id === t.id);
-                const tAttempts = attempts.filter(a => a.topic_id === t.id);
+                const tAttempts = myAttempts.filter(a => a.topic_id === t.id);
                 const latest = tAttempts.length ? tAttempts[tAttempts.length - 1].score : null;
                 return {
                     id: t.id,
@@ -344,7 +530,16 @@ const LocalDB = {
                 };
             });
             const scorePct = topicQuestions.length ? Math.round((correct / topicQuestions.length) * 100) : 0;
-            attempts.unshift({ id: Date.now(), topic_id: topicId, score: scorePct, total_questions: topicQuestions.length, correct_count: correct, mistakes_count: mistakes, taken_at: new Date().toISOString().replace("T", " ").substring(0, 19) });
+            attempts.unshift({ 
+                id: Date.now(), 
+                student_id: currentStudentIdNum, 
+                topic_id: topicId, 
+                score: scorePct, 
+                total_questions: topicQuestions.length, 
+                correct_count: correct, 
+                mistakes_count: mistakes, 
+                taken_at: new Date().toISOString().replace("T", " ").substring(0, 19) 
+            });
             localStorage.setItem("adm_quiz_attempts", JSON.stringify(attempts));
 
             // update session
@@ -366,9 +561,9 @@ const LocalDB = {
         }
 
         if (url === "/quizzes/history") {
-            const joined = attempts.map(a => {
-                const t = topics.find(tp => tp.id === a.topic_id) || {};
-                const sub = subjects.find(sb => sb.id === t.subject_id) || {};
+            const joined = myAttempts.map(a => {
+                const t = myTopics.find(tp => tp.id === a.topic_id) || {};
+                const sub = mySubjects.find(sb => sb.id === t.subject_id) || {};
                 return { ...a, topic_title: t.title, subject_name: sub.name, subject_color: sub.color };
             });
             return { status: "success", attempts: joined };
@@ -684,6 +879,8 @@ function logout() {
     state.token = null;
     state.student = null;
     localStorage.removeItem("adm_token");
+    localStorage.removeItem("adm_current_student_id");
+    localStorage.removeItem("adm_current_student");
     renderLandingPage();
     showToast("You have been signed out.", "info");
 }
@@ -692,6 +889,16 @@ function openAuthModal(mode = "login") {
     const modal = document.getElementById("auth-modal");
     if (!modal) return;
     modal.classList.remove("hidden");
+    if (mode === "register") {
+        const n = document.getElementById("reg-name");
+        const e = document.getElementById("reg-email");
+        const p = document.getElementById("reg-password");
+        const s = document.getElementById("reg-subjects");
+        if (n) n.value = "";
+        if (e) e.value = "";
+        if (p) p.value = "";
+        if (s) s.value = "";
+    }
     switchAuthForm(mode);
 }
 

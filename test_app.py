@@ -9,7 +9,7 @@ from backend.database import init_db, seed_demo_data, get_db
 from backend.auth import create_session
 from backend.revision_planner import get_student_revision_plan
 from backend.ml_engine import ml_engine
-from backend.routes.auth_routes import login, LoginRequest
+from backend.routes.auth_routes import login, LoginRequest, register, RegisterRequest
 from backend.routes.subject_routes import list_subjects, list_topics
 from backend.routes.session_routes import list_sessions, create_session as add_session, SessionCreate
 from backend.routes.quiz_routes import get_quiz_topics, get_topic_questions, submit_quiz_attempt, QuizSubmission
@@ -107,8 +107,41 @@ def run_tests():
     assert dash["kpis"]["average_quiz_score"] > 0
     print(f"  [OK] Dashboard Analytics verified: Retention Health = {dash['kpis']['overall_retention_health']}%")
 
+    # 11. Test Multi-User Registration & Data Isolation
+    import time
+    new_email = f"student_{int(time.time())}@university.edu"
+    reg_req = RegisterRequest(
+        name="Sarah Connor",
+        email=new_email,
+        password="secretpassword123",
+        subjects_interest="Quantum Physics, Neural Networks",
+        study_goals="Ace finals and build AI models",
+        daily_target_minutes=75
+    )
+    reg_res = register(reg_req)
+    assert reg_res["status"] == "success"
+    new_student = reg_res["student"]
+    assert new_student["email"] == new_email
+    assert new_student["id"] != student["id"]
+    print(f"  [OK] New Student registered successfully: {new_student['name']} (ID: {new_student['id']})")
+
+    # Verify new student can log in
+    new_login_res = login(LoginRequest(email=new_email, password="secretpassword123"))
+    assert new_login_res["status"] == "success"
+    assert new_login_res["student"]["id"] == new_student["id"]
+    print(f"  [OK] New Student logged in successfully with private credentials")
+
+    # Verify new student has their own isolated subjects and topics
+    new_subs = list_subjects(current_student=new_student)["subjects"]
+    assert len(new_subs) >= 2
+    assert all(s["student_id"] == new_student["id"] for s in new_subs)
+    new_topics = list_topics(current_student=new_student)["topics"]
+    assert len(new_topics) >= 2
+    assert all(t["student_id"] == new_student["id"] for t in new_topics)
+    print(f"  [OK] Multi-user data isolation verified: {len(new_subs)} private subjects, {len(new_topics)} private topics")
+
     print("\n" + "=" * 70)
-    print("  ALL 10 VERIFICATION TESTS PASSED FLAWLESSLY! SUCCESS")
+    print("  ALL 11 VERIFICATION TESTS (INCLUDING MULTI-USER REGISTRATION) PASSED! SUCCESS")
     print("=" * 70)
 
 if __name__ == "__main__":
