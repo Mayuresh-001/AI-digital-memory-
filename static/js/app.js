@@ -15,7 +15,9 @@ const state = {
     activeQuiz: null,
     quizAnswers: {},
     subjects: [],
-    topics: []
+    topics: [],
+    newTopicFiles: [],
+    activeTopicDetails: null
 };
 
 // Comprehensive Master Quiz Question Bank (225 questions, exactly 25 per topic)
@@ -2763,15 +2765,54 @@ const LocalDB = {
             ]));
         }
         const defaultTopics = [
-            { id: 1, student_id: 1, subject_id: 1, title: "Linear Regression", difficulty: "Medium", notes: "Ordinary least squares, gradient descent, bias-variance tradeoff" },
-            { id: 2, student_id: 1, subject_id: 1, title: "Neural Network Backpropagation", difficulty: "Hard", notes: "Chain rule, vanishing gradients, learning rate schedules" },
-            { id: 3, student_id: 1, subject_id: 1, title: "Support Vector Machines", difficulty: "Medium", notes: "Maximum margin hyperplane, kernel trick, slack variables" },
-            { id: 4, student_id: 1, subject_id: 2, title: "Binary Search Trees", difficulty: "Easy", notes: "In-order traversal yields sorted order, average O(log n) lookup" },
-            { id: 5, student_id: 1, subject_id: 2, title: "Dynamic Programming: Knapsack", difficulty: "Hard", notes: "Overlapping subproblems, 2D memoization table, time complexity" },
-            { id: 6, student_id: 1, subject_id: 2, title: "Graph Breadth-First Search", difficulty: "Medium", notes: "Queue-based traversal, shortest path in unweighted graphs" },
-            { id: 7, student_id: 1, subject_id: 3, title: "Eigenvalues and Eigenvectors", difficulty: "Hard", notes: "Characteristic equation det(A - lambda*I) = 0, diagonalizability" },
-            { id: 8, student_id: 1, subject_id: 3, title: "Matrix Multiplication & Inverses", difficulty: "Easy", notes: "Row by column dot product, determinant checks for singularity" },
-            { id: 9, student_id: 1, subject_id: 4, title: "Cellular Respiration & Krebs Cycle", difficulty: "Medium", notes: "Glycolysis, acetyl-CoA, citric acid cycle, ATP synthase yield" }
+            { 
+                id: 1, student_id: 1, subject_id: 1, title: "Linear Regression", difficulty: "Medium", 
+                notes: "Ordinary least squares derivation: beta = (X^T X)^(-1) X^T y. Gradient descent update rule with learning rate eta. Bias-variance tradeoff and Gauss-Markov theorem assumptions.",
+                attachments: [
+                    {
+                        id: "att_1_1",
+                        name: "Linear_Regression_CheatSheet.txt",
+                        size: 1420,
+                        type: "text/plain",
+                        data: "data:text/plain;base64,TElORUFSIFJFR1JFU1NJT04gQ0hFQVQgU0hFRVQKPT09PT09PT09PT09PT09PT09PT09PT09PT09PT09CjEuIE1vZGVsIEVxdWF0aW9uOiB5ID0gYmV0YV8wICsgYmV0YV8xICogeCArIGVwc2lsb24KMi4gT2xkZXN0IEVzdGltYXRvcjogT0xTIEZvcm11bGE6IGJldGEgPSAoWF5UIFgpXigtMSkgWF5UIHkKMy4gR3JhZGllbnQgRGVzY2VudCBVcGRhdGU6IHRoZXRhX2ogOj0gdGhldGFfaiAtIGFscGhhICogKDEvbSkgKiBzdW0oKGhfdGhldGEoeF5pKSAtIHleaSkgKiB4X2peaSkKNC4gQ29zdCBGdW5jdGlvbjogSkJlKFBhcmFtcykgPSAoMSAvIDJtKSAqIHN1bSgoeF9pICogYmV0YSAtIHlfaSkpXjIKNS4gUmVndWxhcml6YXRpb246CiAgIC0gUmlkZ2UgKEwyKTogcGVuYWx0eSA9IGxhbWJkYSAqIHN1bShiZXRhX2peMikKICAgLSBMYXNzbyAoTDEpOiBwZW5hbHR5ID0gbGFtYmRhICogc3VtKGFicyhiZXRhX2opKSBbZmVhdHVyZSBzZWxlY3Rpb25d",
+                        uploaded_at: "2026-10-25T10:00:00.000Z"
+                    }
+                ]
+            },
+            { 
+                id: 2, student_id: 1, subject_id: 1, title: "Neural Network Backpropagation", difficulty: "Hard", 
+                notes: "Chain rule backpropagation: delta_l = (W_{l+1}^T delta_{l+1}) * sigma'(z_l). Sigmoid derivative sigma'(z) = sigma(z)(1 - sigma(z)). Vanishing gradient mitigation using ReLU and residual connections.",
+                attachments: [
+                    {
+                        id: "att_2_1",
+                        name: "Backpropagation_Derivations.md",
+                        size: 1850,
+                        type: "text/markdown",
+                        data: "data:text/markdown;base64,IyBOZXVyYWwgTmV0d29yayBCYWNrcHJvcGFnYXRpb24gU3R1ZHkgTm90ZXMKCgojIyAxLiBDYWxjdWx1cyBDaGFpbiBSdWxlClBhcnRpYWwgZGVyaXZhdGl2ZSBvZiBsb3NzIEwgd2l0aCByZXNwZWN0IHRvIGFueSB3ZWlnaHQgV19pejoKJCQgcGFydGlhbCBMIC8gcGFydGlhbCBXID0gKHBhcnRpYWwgTCAvIHBhcnRpYWwgYSkgKiAocGFydGlhbCBhIC8gcGFydGlhbCB6KSAqIChwYXJ0aWFsIHogLyBwYXJ0aWFsIFcpICQkCgojIyAyLiBBY3RpdmF0aW9uIEZ1bmN0aW9uIERlcml2YXRpdmVzCi0gU2lnbW9pZDogYFwnKHonKSA9IHNoZ21hKHopICogKDEgLSBzaWdtYSh6KSlgCi0gVGFuaDogYFwnKHonKSA9IDEgLSB0YW5oXjIoengpYAotIFJlTFU6IGAnKHonKSA9IDEgXHRleHR7IGlmIHogPiAwIH0sIFx0ZXh0eyBlbHNlIH0gMGA=",
+                        uploaded_at: "2026-10-25T11:30:00.000Z"
+                    }
+                ]
+            },
+            { 
+                id: 3, student_id: 1, subject_id: 1, title: "Support Vector Machines", difficulty: "Medium", 
+                notes: "Maximum margin hyperplane: min 0.5 * ||w||^2 s.t. y_i(w^T x_i + b) >= 1. Soft margin slack variables xi_i and penalty parameter C. Kernel trick mapping with RBF kernel.",
+                attachments: [
+                    {
+                        id: "att_3_1",
+                        name: "SVM_Formulation_Notes.txt",
+                        size: 1200,
+                        type: "text/plain",
+                        data: "data:text/plain;base64,U1VQUE9SVCBWRUNUT1IgTUFDSElORVMgKE1BWEFNVU0gTUFSR0lOKQo9PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PQoxLiBQcmltYWwgT3B0aW1pemF0aW9uIFByb2JsZW06CiAgIE1pbmltaXplOiAxLzIgKiB8fHdsfF4yICsgQyAqIFN1bSh4aV9pKQogICBTdWJqZWN0IHRvOiB5X2kgKiAod15UIHhfaSArIGIpID49IDEgLSB4aV9pCjIuIEtlcm5lbCBUcmljazogS194aSwgeGopID0gZXhwKC1nYW1tYSAqIHx8eGlfeGogfF4yKQ==",
+                        uploaded_at: "2026-10-26T09:15:00.000Z"
+                    }
+                ]
+            },
+            { id: 4, student_id: 1, subject_id: 2, title: "Binary Search Trees", difficulty: "Easy", notes: "In-order traversal yields sorted order, average O(log n) lookup", attachments: [] },
+            { id: 5, student_id: 1, subject_id: 2, title: "Dynamic Programming: Knapsack", difficulty: "Hard", notes: "Overlapping subproblems, 2D memoization table, time complexity", attachments: [] },
+            { id: 6, student_id: 1, subject_id: 2, title: "Graph Breadth-First Search", difficulty: "Medium", notes: "Queue-based traversal, shortest path in unweighted graphs", attachments: [] },
+            { id: 7, student_id: 1, subject_id: 3, title: "Eigenvalues and Eigenvectors", difficulty: "Hard", notes: "Characteristic equation det(A - lambda*I) = 0, diagonalizability", attachments: [] },
+            { id: 8, student_id: 1, subject_id: 3, title: "Matrix Multiplication & Inverses", difficulty: "Easy", notes: "Row by column dot product, determinant checks for singularity", attachments: [] },
+            { id: 9, student_id: 1, subject_id: 4, title: "Cellular Respiration & Krebs Cycle", difficulty: "Medium", notes: "Glycolysis, acetyl-CoA, citric acid cycle, ATP synthase yield", attachments: [] }
         ];
 
         let loadedTopics = [];
@@ -3041,16 +3082,45 @@ const LocalDB = {
             if (method === "GET") {
                 const joined = myTopics.map(t => {
                     const sub = mySubjects.find(s => s.id === t.subject_id) || {};
-                    return { ...t, subject_name: sub.name || "General", subject_color: sub.color || "#2563eb" };
+                    let atts = t.attachments || [];
+                    if (typeof atts === "string") {
+                        try { atts = JSON.parse(atts); } catch(e) { atts = []; }
+                    }
+                    return { ...t, attachments: atts, subject_name: sub.name || "General", subject_color: sub.color || "#2563eb" };
                 });
                 return { status: "success", topics: joined };
             }
             if (method === "POST") {
-                const newT = { id: Date.now(), student_id: currentStudentIdNum, ...body };
+                const newT = { 
+                    id: Date.now(), 
+                    student_id: currentStudentIdNum, 
+                    ...body,
+                    attachments: body.attachments || [] 
+                };
                 topics.push(newT);
                 localStorage.setItem("adm_topics", JSON.stringify(topics));
-                return { status: "success", message: "Topic created.", id: newT.id };
+                return { status: "success", message: "Topic created successfully with notes and files.", id: newT.id };
             }
+        }
+
+        if (url.startsWith("/topics/") && url.endsWith("/attachments") && method === "PUT") {
+            const topicId = parseInt(url.split("/")[2]);
+            const topic = topics.find(t => t.id === topicId);
+            if (topic) {
+                topic.attachments = body.attachments || [];
+                localStorage.setItem("adm_topics", JSON.stringify(topics));
+            }
+            return { status: "success", message: "Attachments updated successfully." };
+        }
+
+        if (url.startsWith("/topics/") && url.endsWith("/notes") && method === "PUT") {
+            const topicId = parseInt(url.split("/")[2]);
+            const topic = topics.find(t => t.id === topicId);
+            if (topic) {
+                topic.notes = body.notes || "";
+                localStorage.setItem("adm_topics", JSON.stringify(topics));
+            }
+            return { status: "success", message: "Notes updated successfully." };
         }
 
         // Sessions
@@ -4114,6 +4184,121 @@ async function deleteSession(id) {
 // -------------------------------------------------------------------------
 // 4. SUBJECTS & TOPICS
 // -------------------------------------------------------------------------
+// -------------------------------------------------------------------------
+// File Attachment Utilities & Handlers
+// -------------------------------------------------------------------------
+function formatFileSize(bytes) {
+    if (!bytes || bytes === 0) return "0 B";
+    const k = 1024;
+    const sizes = ["B", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
+}
+
+function getFileIconClass(filename, type) {
+    const fn = (filename || "").toLowerCase();
+    const tp = (type || "").toLowerCase();
+    if (fn.endsWith(".pdf") || tp.includes("pdf")) return "fas fa-file-pdf text-rose-500";
+    if (fn.endsWith(".doc") || fn.endsWith(".docx") || tp.includes("word")) return "fas fa-file-word text-blue-600";
+    if (fn.endsWith(".png") || fn.endsWith(".jpg") || fn.endsWith(".jpeg") || fn.endsWith(".gif") || fn.endsWith(".webp") || tp.includes("image")) return "fas fa-file-image text-emerald-500";
+    if (fn.endsWith(".txt") || fn.endsWith(".md") || tp.includes("text")) return "fas fa-file-alt text-amber-500";
+    if (fn.endsWith(".py") || fn.endsWith(".js") || fn.endsWith(".html") || fn.endsWith(".css") || fn.endsWith(".json")) return "fas fa-file-code text-indigo-500";
+    if (fn.endsWith(".zip") || fn.endsWith(".rar") || fn.endsWith(".tar") || fn.endsWith(".gz")) return "fas fa-file-archive text-yellow-600";
+    if (fn.endsWith(".xls") || fn.endsWith(".xlsx") || fn.endsWith(".csv")) return "fas fa-file-excel text-teal-600";
+    return "fas fa-file text-slate-500";
+}
+
+function readFileAsDataURL(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+}
+
+async function processSelectedFiles(files, targetArray, renderCallback) {
+    for (const file of Array.from(files)) {
+        if (file.size > 20 * 1024 * 1024) {
+            showToast(`File ${file.name} is too large (max 20MB)`, "error");
+            continue;
+        }
+        try {
+            const dataUrl = await readFileAsDataURL(file);
+            targetArray.push({
+                id: "att_" + Date.now() + "_" + Math.random().toString(36).substring(2, 7),
+                name: file.name,
+                size: file.size,
+                type: file.type || "application/octet-stream",
+                data: dataUrl,
+                uploaded_at: new Date().toISOString()
+            });
+        } catch (e) {
+            showToast("Failed to read " + file.name, "error");
+        }
+    }
+    if (typeof renderCallback === "function") renderCallback();
+}
+
+function handleTopicFileDragOver(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const el = document.getElementById("topic-file-dropzone");
+    if (el) el.classList.add("border-blue-500", "bg-blue-50/80");
+}
+
+function handleTopicFileDragLeave(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const el = document.getElementById("topic-file-dropzone");
+    if (el) el.classList.remove("border-blue-500", "bg-blue-50/80");
+}
+
+function handleTopicFileDrop(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const el = document.getElementById("topic-file-dropzone");
+    if (el) el.classList.remove("border-blue-500", "bg-blue-50/80");
+    if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) {
+        processSelectedFiles(e.dataTransfer.files, state.newTopicFiles, renderNewTopicFilesPreview);
+    }
+}
+
+function handleTopicFileSelect(e) {
+    if (e.target && e.target.files && e.target.files.length) {
+        processSelectedFiles(e.target.files, state.newTopicFiles, renderNewTopicFilesPreview);
+        e.target.value = "";
+    }
+}
+
+function renderNewTopicFilesPreview() {
+    const list = document.getElementById("topic-files-preview-list");
+    if (!list) return;
+    if (!state.newTopicFiles || !state.newTopicFiles.length) {
+        list.innerHTML = "";
+        return;
+    }
+    list.innerHTML = state.newTopicFiles.map((f, idx) => `
+        <div class="flex items-center justify-between p-2 rounded-lg bg-blue-50/70 border border-blue-100 text-xs">
+            <div class="flex items-center gap-2 overflow-hidden">
+                <i class="${getFileIconClass(f.name, f.type)} text-sm flex-shrink-0"></i>
+                <div class="truncate">
+                    <span class="font-medium text-slate-800">${escapeHtml(f.name)}</span>
+                    <span class="text-[10px] text-slate-400 ml-1">(${formatFileSize(f.size)})</span>
+                </div>
+            </div>
+            <button type="button" onclick="removeNewTopicFile(${idx})" class="text-slate-400 hover:text-rose-500 p-1 transition" title="Remove file">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    `).join("");
+}
+
+function removeNewTopicFile(idx) {
+    state.newTopicFiles.splice(idx, 1);
+    renderNewTopicFilesPreview();
+}
+
 async function loadSubjects() {
     try {
         const res = await apiRequest("/subjects");
@@ -4127,42 +4312,88 @@ async function loadSubjects() {
         container.innerHTML = state.subjects.map(sub => {
             const subTopics = allTopics.filter(t => t.subject_id === sub.id);
             return `
-                <div class="card-soft rounded-xl p-5">
-                    <div class="flex items-start justify-between mb-3">
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold text-sm shadow-sm" style="background-color: ${sub.color}">
-                                ${sub.code ? sub.code.substring(0, 4) : sub.name.substring(0, 2).toUpperCase()}
-                            </div>
-                            <div>
-                                <h3 class="font-bold text-slate-900">${sub.name}</h3>
-                                <p class="text-xs text-slate-500">${sub.code ? `${sub.code} • ` : ''}${subTopics.length} topic${subTopics.length === 1 ? '' : 's'}</p>
-                            </div>
-                        </div>
-                        <button onclick="deleteSubject(${sub.id})" class="text-slate-400 hover:text-rose-500 transition p-1" title="Delete subject">
-                            <i class="fas fa-trash-alt text-xs"></i>
-                        </button>
-                    </div>
-
-                    ${sub.description ? `<p class="text-xs text-slate-600 mb-4">${sub.description}</p>` : ''}
-
-                    <div class="space-y-2 mt-4 pt-3 border-t border-slate-100">
-                        ${subTopics.map(t => `
-                            <div class="flex items-center justify-between p-2 rounded-lg bg-slate-50 hover:bg-slate-100 transition text-xs">
-                                <div class="font-medium text-slate-800">${t.title}</div>
-                                <div class="flex items-center gap-2">
-                                    <span class="px-2 py-0.5 rounded text-[10px] font-semibold ${
-                                        t.difficulty === 'Easy' ? 'badge-diff-easy' :
-                                        t.difficulty === 'Medium' ? 'badge-diff-medium' : 'badge-diff-hard'
-                                    }">${t.difficulty}</span>
-                                    <button onclick="startTopicQuiz(${t.id})" class="text-blue-600 hover:text-blue-800 p-1" title="Quiz this topic">
-                                        <i class="fas fa-play"></i>
-                                    </button>
+                <div class="card-soft rounded-xl p-5 flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-start justify-between mb-3">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold text-sm shadow-sm" style="background-color: ${sub.color}">
+                                    ${sub.code ? sub.code.substring(0, 4) : sub.name.substring(0, 2).toUpperCase()}
+                                </div>
+                                <div>
+                                    <h3 class="font-bold text-slate-900">${sub.name}</h3>
+                                    <p class="text-xs text-slate-500">${sub.code ? `${sub.code} • ` : ''}${subTopics.length} topic${subTopics.length === 1 ? '' : 's'}</p>
                                 </div>
                             </div>
-                        `).join("")}
+                            <button onclick="deleteSubject(${sub.id})" class="text-slate-400 hover:text-rose-500 transition p-1" title="Delete subject">
+                                <i class="fas fa-trash-alt text-xs"></i>
+                            </button>
+                        </div>
+
+                        ${sub.description ? `<p class="text-xs text-slate-600 mb-4">${sub.description}</p>` : ''}
+
+                        <div class="space-y-2 mt-4 pt-3 border-t border-slate-100">
+                            ${subTopics.map(t => {
+                                let atts = t.attachments || [];
+                                if (typeof atts === "string") {
+                                    try { atts = JSON.parse(atts); } catch(e) { atts = []; }
+                                }
+                                const hasFiles = atts.length > 0;
+                                const hasNotes = Boolean(t.notes && t.notes.trim());
+
+                                return `
+                                    <div class="p-2.5 rounded-xl bg-slate-50 hover:bg-slate-100/80 transition text-xs border border-slate-100 flex flex-col gap-1.5">
+                                        <div class="flex items-center justify-between">
+                                            <div class="font-bold text-slate-800 hover:text-blue-600 cursor-pointer flex items-center gap-1.5" onclick="openTopicDetailsModal(${t.id})" title="Click to view notes & files">
+                                                <span>${escapeHtml(t.title)}</span>
+                                            </div>
+                                            <div class="flex items-center gap-1.5">
+                                                <span class="px-2 py-0.5 rounded text-[10px] font-semibold ${
+                                                    t.difficulty === 'Easy' ? 'badge-diff-easy' :
+                                                    t.difficulty === 'Medium' ? 'badge-diff-medium' : 'badge-diff-hard'
+                                                }">${t.difficulty}</span>
+                                                <button onclick="openTopicDetailsModal(${t.id})" class="text-slate-500 hover:text-blue-600 p-1 transition" title="Inspect notes & attached files">
+                                                    <i class="fas fa-folder-open"></i>
+                                                </button>
+                                                <button onclick="startTopicQuiz(${t.id})" class="text-blue-600 hover:text-blue-800 p-1 transition" title="Take Quiz">
+                                                    <i class="fas fa-play"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <!-- Notes & Files indicators -->
+                                        ${(hasFiles || hasNotes) ? `
+                                            <div class="flex items-center gap-2 pt-1 border-t border-slate-200/50 text-[11px]">
+                                                ${hasNotes ? `
+                                                    <button onclick="openTopicDetailsModal(${t.id})" class="text-slate-600 hover:text-slate-900 bg-white border border-slate-200 px-2 py-0.5 rounded-md flex items-center gap-1 text-[10px] font-medium" title="${escapeHtml(t.notes)}">
+                                                        <i class="fas fa-sticky-note text-amber-500"></i>
+                                                        <span class="truncate max-w-[130px]">${escapeHtml(t.notes)}</span>
+                                                    </button>
+                                                ` : ''}
+                                                ${hasFiles ? `
+                                                    <button onclick="openTopicDetailsModal(${t.id})" class="text-blue-700 bg-blue-50 border border-blue-200/70 hover:bg-blue-100 px-2 py-0.5 rounded-md flex items-center gap-1 text-[10px] font-semibold">
+                                                        <i class="fas fa-paperclip"></i>
+                                                        <span>${atts.length} file${atts.length === 1 ? '' : 's'}</span>
+                                                    </button>
+                                                ` : `
+                                                    <button onclick="openTopicDetailsModal(${t.id})" class="text-slate-400 hover:text-blue-600 text-[10px] flex items-center gap-1 ml-auto">
+                                                        <i class="fas fa-plus"></i> Attach file
+                                                    </button>
+                                                `}
+                                            </div>
+                                        ` : `
+                                            <div class="flex justify-end pt-0.5">
+                                                <button onclick="openTopicDetailsModal(${t.id})" class="text-slate-400 hover:text-blue-600 text-[10px] flex items-center gap-1">
+                                                    <i class="fas fa-paperclip"></i> Add notes / files
+                                                </button>
+                                            </div>
+                                        `}
+                                    </div>
+                                `;
+                            }).join("")}
+                        </div>
                     </div>
 
-                    <button onclick="openAddTopicModal(${sub.id})" class="w-full mt-3 py-2 text-xs font-semibold text-blue-600 hover:bg-blue-50 rounded-lg border border-dashed border-blue-200 transition flex items-center justify-center gap-1.5">
+                    <button onclick="openAddTopicModal(${sub.id})" class="w-full mt-4 py-2 text-xs font-semibold text-blue-600 hover:bg-blue-50 rounded-lg border border-dashed border-blue-200 transition flex items-center justify-center gap-1.5">
                         <i class="fas fa-plus"></i> Add Topic
                     </button>
                 </div>
@@ -4200,14 +4431,21 @@ async function handleAddTopicSubmit(e) {
     const title = document.getElementById("new-topic-title").value;
     const difficulty = document.getElementById("new-topic-diff").value;
     const notes = document.getElementById("new-topic-notes").value;
+    const attachments = state.newTopicFiles || [];
 
     try {
         const res = await apiRequest("/topics", {
             method: "POST",
-            body: JSON.stringify({ subject_id, title, difficulty, notes })
+            body: JSON.stringify({ subject_id, title, difficulty, notes, attachments })
         });
         showToast(res.message, "success");
         closeModal("add-topic-modal");
+        state.newTopicFiles = [];
+        renderNewTopicFilesPreview();
+        const notesEl = document.getElementById("new-topic-notes");
+        if (notesEl) notesEl.value = "";
+        const titleEl = document.getElementById("new-topic-title");
+        if (titleEl) titleEl.value = "";
         loadSubjects();
     } catch (err) {
         showToast(err.message, "error");
@@ -4220,6 +4458,8 @@ function openAddTopicModal(subjectId = null) {
         const select = document.getElementById("new-topic-subject");
         if (select) select.value = subjectId;
     }
+    state.newTopicFiles = [];
+    renderNewTopicFilesPreview();
     openModal("add-topic-modal");
 }
 
@@ -4232,6 +4472,314 @@ async function deleteSubject(id) {
     } catch (e) {
         showToast(e.message, "error");
     }
+}
+
+// -------------------------------------------------------------------------
+// Topic Details & Files Modal Management
+// -------------------------------------------------------------------------
+async function openTopicDetailsModal(topicId) {
+    try {
+        const topicsRes = await apiRequest("/topics");
+        const topic = (topicsRes.topics || []).find(t => t.id === topicId);
+        if (!topic) {
+            showToast("Topic not found", "error");
+            return;
+        }
+        state.activeTopicDetails = topic;
+
+        const titleEl = document.getElementById("topic-details-title");
+        if (titleEl) titleEl.textContent = topic.title;
+
+        const subBadge = document.getElementById("topic-details-subject");
+        if (subBadge) {
+            subBadge.textContent = topic.subject_name || "General";
+            subBadge.style.backgroundColor = topic.subject_color || "#2563eb";
+        }
+
+        const diffBadge = document.getElementById("topic-details-difficulty");
+        if (diffBadge) {
+            diffBadge.textContent = topic.difficulty;
+            diffBadge.className = `text-[10px] font-semibold px-2 py-0.5 rounded ${
+                topic.difficulty === 'Easy' ? 'badge-diff-easy' :
+                topic.difficulty === 'Medium' ? 'badge-diff-medium' : 'badge-diff-hard'
+            }`;
+        }
+
+        const notesView = document.getElementById("topic-details-notes-view");
+        if (notesView) {
+            notesView.textContent = topic.notes || "No initial notes provided for this topic.";
+        }
+        cancelEditTopicNotes();
+
+        renderTopicDetailsFiles();
+        openModal("topic-details-modal");
+    } catch (e) {
+        showToast("Error opening topic details: " + e.message, "error");
+    }
+}
+
+function renderTopicDetailsFiles() {
+    const topic = state.activeTopicDetails;
+    if (!topic) return;
+
+    let atts = topic.attachments || [];
+    if (typeof atts === "string") {
+        try { atts = JSON.parse(atts); } catch(e) { atts = []; }
+    }
+    topic.attachments = atts;
+
+    const countEl = document.getElementById("topic-details-files-count");
+    if (countEl) countEl.textContent = atts.length;
+
+    const list = document.getElementById("topic-details-files-list");
+    if (!list) return;
+
+    if (!atts.length) {
+        list.innerHTML = `
+            <div class="text-center py-4 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                <i class="fas fa-folder-open text-slate-300 text-2xl mb-1"></i>
+                <p class="text-xs text-slate-500 font-medium">No study files attached to this topic yet.</p>
+                <p class="text-[10px] text-slate-400 mt-0.5">Use the button above or drag & drop files from your laptop to attach.</p>
+            </div>
+        `;
+        return;
+    }
+
+    list.innerHTML = atts.map((f, idx) => `
+        <div class="flex items-center justify-between p-2.5 rounded-xl bg-white border border-slate-200 hover:border-blue-200 hover:shadow-xs transition">
+            <div class="flex items-center gap-3 overflow-hidden">
+                <div class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-sm flex-shrink-0">
+                    <i class="${getFileIconClass(f.name, f.type)}"></i>
+                </div>
+                <div class="truncate">
+                    <div class="font-medium text-xs text-slate-900 truncate" title="${escapeHtml(f.name)}">${escapeHtml(f.name)}</div>
+                    <div class="text-[10px] text-slate-400">${formatFileSize(f.size)} • ${f.uploaded_at ? f.uploaded_at.split('T')[0] : 'Uploaded'}</div>
+                </div>
+            </div>
+            <div class="flex items-center gap-1.5 flex-shrink-0">
+                <button onclick="previewTopicFile(${idx})" class="px-2 py-1 bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-600 rounded text-xs transition" title="Preview file">
+                    <i class="fas fa-eye"></i>
+                </button>
+                <button onclick="downloadTopicFile(${idx})" class="px-2 py-1 bg-slate-100 hover:bg-emerald-50 text-slate-700 hover:text-emerald-600 rounded text-xs transition" title="Download to laptop">
+                    <i class="fas fa-download"></i>
+                </button>
+                <button onclick="deleteTopicFile(${idx})" class="px-2 py-1 bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-600 rounded text-xs transition" title="Remove attachment">
+                    <i class="fas fa-trash-alt"></i>
+                </button>
+            </div>
+        </div>
+    `).join("");
+}
+
+function handleTopicDetailsDragOver(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const el = document.getElementById("topic-details-dropzone");
+    if (el) el.classList.add("border-blue-500", "bg-blue-50/80");
+}
+
+function handleTopicDetailsDragLeave(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const el = document.getElementById("topic-details-dropzone");
+    if (el) el.classList.remove("border-blue-500", "bg-blue-50/80");
+}
+
+async function handleTopicDetailsDrop(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const el = document.getElementById("topic-details-dropzone");
+    if (el) el.classList.remove("border-blue-500", "bg-blue-50/80");
+    if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) {
+        await addFilesToCurrentTopic(e.dataTransfer.files);
+    }
+}
+
+async function handleTopicDetailsAddFiles(e) {
+    if (e.target && e.target.files && e.target.files.length) {
+        await addFilesToCurrentTopic(e.target.files);
+        e.target.value = "";
+    }
+}
+
+async function addFilesToCurrentTopic(files) {
+    const topic = state.activeTopicDetails;
+    if (!topic) return;
+
+    const newFiles = [];
+    await processSelectedFiles(files, newFiles, () => {});
+    if (!newFiles.length) return;
+
+    topic.attachments = (topic.attachments || []).concat(newFiles);
+
+    try {
+        await apiRequest(`/topics/${topic.id}/attachments`, {
+            method: "PUT",
+            body: JSON.stringify({ attachments: topic.attachments })
+        });
+        showToast(`Added ${newFiles.length} file(s) to ${topic.title}`, "success");
+        renderTopicDetailsFiles();
+        loadSubjects();
+    } catch (err) {
+        showToast("Error updating attachments: " + err.message, "error");
+    }
+}
+
+async function deleteTopicFile(idx) {
+    const topic = state.activeTopicDetails;
+    if (!topic || !confirm("Are you sure you want to remove this attached file?")) return;
+
+    topic.attachments.splice(idx, 1);
+    try {
+        await apiRequest(`/topics/${topic.id}/attachments`, {
+            method: "PUT",
+            body: JSON.stringify({ attachments: topic.attachments })
+        });
+        showToast("File removed", "info");
+        renderTopicDetailsFiles();
+        loadSubjects();
+    } catch (err) {
+        showToast("Error removing file: " + err.message, "error");
+    }
+}
+
+function downloadTopicFile(idx) {
+    const topic = state.activeTopicDetails;
+    if (!topic || !topic.attachments || !topic.attachments[idx]) return;
+    const f = topic.attachments[idx];
+
+    const a = document.createElement("a");
+    a.href = f.data;
+    a.download = f.name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    showToast(`Downloading ${f.name}`, "info");
+}
+
+function previewTopicFile(idx) {
+    const topic = state.activeTopicDetails;
+    if (!topic || !topic.attachments || !topic.attachments[idx]) return;
+    const f = topic.attachments[idx];
+
+    const titleEl = document.getElementById("preview-file-title");
+    if (titleEl) titleEl.textContent = f.name;
+
+    const iconEl = document.getElementById("preview-file-icon");
+    if (iconEl) iconEl.className = getFileIconClass(f.name, f.type) + " text-lg";
+
+    const dlBtn = document.getElementById("preview-download-btn");
+    if (dlBtn) {
+        dlBtn.href = f.data;
+        dlBtn.download = f.name;
+    }
+
+    const bodyEl = document.getElementById("preview-file-body");
+    if (!bodyEl) return;
+
+    const fn = (f.name || "").toLowerCase();
+    const tp = (f.type || "").toLowerCase();
+
+    if (tp.startsWith("image/") || fn.endsWith(".png") || fn.endsWith(".jpg") || fn.endsWith(".jpeg") || fn.endsWith(".webp") || fn.endsWith(".gif")) {
+        bodyEl.innerHTML = `
+            <div class="flex items-center justify-center p-4 bg-slate-50 rounded-xl min-h-[300px]">
+                <img src="${f.data}" alt="${escapeHtml(f.name)}" class="max-h-[60vh] max-w-full rounded-lg shadow-sm object-contain">
+            </div>
+        `;
+    } else if (tp.includes("pdf") || fn.endsWith(".pdf")) {
+        bodyEl.innerHTML = `
+            <div class="w-full h-[60vh] rounded-xl overflow-hidden border border-slate-200">
+                <iframe src="${f.data}" class="w-full h-full" frameborder="0"></iframe>
+            </div>
+        `;
+    } else if (tp.startsWith("text/") || fn.endsWith(".txt") || fn.endsWith(".md") || fn.endsWith(".py") || fn.endsWith(".js") || fn.endsWith(".json") || fn.endsWith(".html") || fn.endsWith(".css")) {
+        let textContent = "";
+        try {
+            if (f.data && f.data.includes(",")) {
+                const b64 = f.data.split(",")[1];
+                textContent = decodeURIComponent(escape(atob(b64)));
+            } else {
+                textContent = f.data || "";
+            }
+        } catch(e) {
+            textContent = "Unable to decode text preview. Please use the Download button to view file.";
+        }
+        bodyEl.innerHTML = `
+            <div class="p-4 bg-slate-900 text-slate-100 rounded-xl font-mono text-xs max-h-[60vh] overflow-auto whitespace-pre-wrap leading-relaxed">
+                ${escapeHtml(textContent)}
+            </div>
+        `;
+    } else {
+        bodyEl.innerHTML = `
+            <div class="text-center py-12 bg-slate-50 rounded-xl border border-slate-200">
+                <i class="${getFileIconClass(f.name, f.type)} text-4xl mb-3"></i>
+                <h5 class="font-bold text-sm text-slate-800">${escapeHtml(f.name)}</h5>
+                <p class="text-xs text-slate-500 mt-1">${formatFileSize(f.size)} • Document format</p>
+                <div class="mt-4">
+                    <button onclick="downloadTopicFile(${idx})" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg shadow-xs inline-flex items-center gap-1.5">
+                        <i class="fas fa-download"></i> Download to View on Laptop
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+
+    openModal("file-preview-modal");
+}
+
+function enableEditTopicNotes() {
+    const topic = state.activeTopicDetails;
+    if (!topic) return;
+    const viewEl = document.getElementById("topic-details-notes-view");
+    const editEl = document.getElementById("topic-details-notes-edit");
+    const inputEl = document.getElementById("topic-edit-notes-input");
+    const btn = document.getElementById("edit-notes-btn");
+    if (viewEl && editEl && inputEl) {
+        inputEl.value = topic.notes || "";
+        viewEl.classList.add("hidden");
+        editEl.classList.remove("hidden");
+        if (btn) btn.classList.add("hidden");
+    }
+}
+
+function cancelEditTopicNotes() {
+    const viewEl = document.getElementById("topic-details-notes-view");
+    const editEl = document.getElementById("topic-details-notes-edit");
+    const btn = document.getElementById("edit-notes-btn");
+    if (viewEl && editEl) {
+        viewEl.classList.remove("hidden");
+        editEl.classList.add("hidden");
+        if (btn) btn.classList.remove("hidden");
+    }
+}
+
+async function saveEditTopicNotes() {
+    const topic = state.activeTopicDetails;
+    if (!topic) return;
+    const inputEl = document.getElementById("topic-edit-notes-input");
+    const newNotes = inputEl ? inputEl.value.trim() : "";
+
+    topic.notes = newNotes;
+    try {
+        await apiRequest(`/topics/${topic.id}/notes`, {
+            method: "PUT",
+            body: JSON.stringify({ notes: newNotes })
+        });
+        showToast("Topic notes updated.", "success");
+        const viewEl = document.getElementById("topic-details-notes-view");
+        if (viewEl) viewEl.textContent = newNotes || "No initial notes provided for this topic.";
+        cancelEditTopicNotes();
+        loadSubjects();
+    } catch(err) {
+        showToast("Error updating notes: " + err.message, "error");
+    }
+}
+
+function startTopicQuizFromModal() {
+    const topic = state.activeTopicDetails;
+    if (!topic) return;
+    closeModal("topic-details-modal");
+    startTopicQuiz(topic.id);
 }
 
 // -------------------------------------------------------------------------

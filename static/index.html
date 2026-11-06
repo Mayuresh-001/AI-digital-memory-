@@ -806,7 +806,7 @@
 
     <!-- Add Topic Modal -->
     <div id="add-topic-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl animate-fade-in relative">
+        <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl animate-fade-in relative max-h-[92vh] overflow-y-auto">
             <button onclick="closeModal('add-topic-modal')" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-lg">
                 <i class="fas fa-times"></i>
             </button>
@@ -829,14 +829,147 @@
                     </select>
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-slate-700 mb-1">Initial Notes</label>
-                    <textarea id="new-topic-notes" rows="2" placeholder="Key formulas or principles..." class="w-full p-2 text-xs rounded-lg border border-slate-200"></textarea>
+                    <div class="flex items-center justify-between mb-1">
+                        <label class="block text-xs font-bold text-slate-700">Initial Notes & Key Formulas</label>
+                        <span class="text-[10px] text-slate-400">Notes & Study Attachments</span>
+                    </div>
+                    <textarea id="new-topic-notes" rows="2" placeholder="Key formulas, principles, summary..." class="w-full p-2.5 text-xs rounded-lg border border-slate-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition"></textarea>
+
+                    <!-- File Upload Space in Initial Notes -->
+                    <div class="mt-3">
+                        <label class="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
+                            <span class="flex items-center gap-1.5">
+                                <i class="fas fa-folder-open text-blue-600"></i>
+                                <span>Attach Study Documents & Files</span>
+                            </span>
+                            <span class="text-[10px] font-normal text-slate-400">PDF, DOC, TXT, Images, Slides</span>
+                        </label>
+                        
+                        <div id="topic-file-dropzone" 
+                             onclick="document.getElementById('new-topic-files').click()"
+                             ondragover="handleTopicFileDragOver(event)"
+                             ondragleave="handleTopicFileDragLeave(event)"
+                             ondrop="handleTopicFileDrop(event)"
+                             class="border-2 border-dashed border-slate-200 hover:border-blue-400 bg-slate-50/80 hover:bg-blue-50/50 rounded-xl p-3.5 text-center cursor-pointer transition group">
+                            
+                            <input id="new-topic-files" type="file" multiple class="hidden" onchange="handleTopicFileSelect(event)">
+                            
+                            <div class="flex flex-col items-center justify-center gap-1 pointer-events-none">
+                                <div class="w-9 h-9 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm group-hover:scale-110 transition shadow-xs">
+                                    <i class="fas fa-file-upload"></i>
+                                </div>
+                                <div class="text-xs font-semibold text-slate-700 group-hover:text-blue-600 transition">
+                                    Click to browse files or drag & drop from laptop
+                                </div>
+                                <p class="text-[10px] text-slate-400">
+                                    Upload documents, lecture notes, cheat sheets or PDF files from your device
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Uploaded Files Preview List -->
+                        <div id="topic-files-preview-list" class="mt-2 space-y-1.5"></div>
+                    </div>
                 </div>
-                <div class="flex justify-end gap-2 pt-2">
+                <div class="flex justify-end gap-2 pt-2 border-t border-slate-100">
                     <button type="button" onclick="closeModal('add-topic-modal')" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
                     <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg shadow-sm">Save Topic</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Topic Notes & Files Viewer / Manager Modal -->
+    <div id="topic-details-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl animate-fade-in relative max-h-[92vh] overflow-y-auto">
+            <button onclick="closeModal('topic-details-modal')" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-lg">
+                <i class="fas fa-times"></i>
+            </button>
+            <div class="flex items-center gap-2 mb-2">
+                <span id="topic-details-subject" class="text-xs font-bold px-2.5 py-0.5 rounded-full text-white bg-blue-600">Subject</span>
+                <span id="topic-details-difficulty" class="text-[10px] font-semibold px-2 py-0.5 rounded">Medium</span>
+            </div>
+            <h3 id="topic-details-title" class="text-lg font-bold text-slate-900 mb-4">Topic Title</h3>
+
+            <!-- Initial Notes Section -->
+            <div class="mb-5 bg-slate-50 border border-slate-200/80 rounded-xl p-3.5">
+                <div class="flex items-center justify-between mb-1.5">
+                    <span class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                        <i class="fas fa-sticky-note text-amber-500"></i> Initial Notes & Key Principles
+                    </span>
+                    <button onclick="enableEditTopicNotes()" id="edit-notes-btn" class="text-[11px] text-blue-600 hover:text-blue-800 font-semibold">
+                        <i class="fas fa-pencil-alt mr-1"></i>Edit
+                    </button>
+                </div>
+                <div id="topic-details-notes-view" class="text-xs text-slate-600 whitespace-pre-wrap leading-relaxed"></div>
+                <div id="topic-details-notes-edit" class="hidden mt-2 space-y-2">
+                    <textarea id="topic-edit-notes-input" rows="3" class="w-full p-2.5 text-xs rounded-lg border border-slate-300"></textarea>
+                    <div class="flex justify-end gap-2">
+                        <button onclick="cancelEditTopicNotes()" class="px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-slate-200 rounded">Cancel</button>
+                        <button onclick="saveEditTopicNotes()" class="px-3 py-1 bg-blue-600 text-white text-xs font-bold rounded">Save Notes</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Attached Files Section -->
+            <div class="mb-4">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                        <i class="fas fa-paperclip text-blue-600"></i> Attached Documents & Files (<span id="topic-details-files-count">0</span>)
+                    </span>
+                    <button onclick="document.getElementById('topic-details-add-files').click()" class="text-xs font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1">
+                        <i class="fas fa-plus-circle"></i> Add Files from Laptop
+                    </button>
+                    <input id="topic-details-add-files" type="file" multiple class="hidden" onchange="handleTopicDetailsAddFiles(event)">
+                </div>
+
+                <div id="topic-details-files-list" class="space-y-2">
+                    <!-- Populated dynamically with file cards -->
+                </div>
+            </div>
+
+            <!-- Dropzone inside Details Modal for quick drag & drop -->
+            <div id="topic-details-dropzone"
+                 onclick="document.getElementById('topic-details-add-files').click()"
+                 ondragover="handleTopicDetailsDragOver(event)"
+                 ondragleave="handleTopicDetailsDragLeave(event)"
+                 ondrop="handleTopicDetailsDrop(event)"
+                 class="border-2 border-dashed border-slate-200 hover:border-blue-400 bg-slate-50/60 hover:bg-blue-50/40 rounded-xl p-3 text-center cursor-pointer transition">
+                <p class="text-xs text-slate-600 font-medium">
+                    <i class="fas fa-cloud-upload-alt text-blue-500 mr-1.5"></i> Drag & drop more files here or click to browse
+                </p>
+                <p class="text-[10px] text-slate-400 mt-0.5">Supports PDF, DOC, TXT, images, and documents</p>
+            </div>
+
+            <div class="flex justify-between items-center mt-5 pt-3 border-t border-slate-100">
+                <button onclick="startTopicQuizFromModal()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg flex items-center gap-1.5 shadow-sm">
+                    <i class="fas fa-play"></i> Start Quiz
+                </button>
+                <button onclick="closeModal('topic-details-modal')" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Document / Image Preview Modal -->
+    <div id="file-preview-modal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[60] flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl max-w-3xl w-full p-5 shadow-2xl relative max-h-[90vh] flex flex-col">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div class="flex items-center gap-2 overflow-hidden">
+                    <i id="preview-file-icon" class="fas fa-file text-blue-600 text-lg"></i>
+                    <h4 id="preview-file-title" class="font-bold text-sm text-slate-900 truncate">File Preview</h4>
+                </div>
+                <div class="flex items-center gap-2">
+                    <a id="preview-download-btn" href="#" download="" class="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold rounded-lg flex items-center gap-1 transition">
+                        <i class="fas fa-download"></i> Download
+                    </a>
+                    <button onclick="closeModal('file-preview-modal')" class="text-slate-400 hover:text-slate-600 p-1 text-base">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+            <div id="preview-file-body" class="flex-1 overflow-auto py-4 text-xs text-slate-800">
+                <!-- Preview content (image, iframe for PDF, or text viewer) -->
+            </div>
         </div>
     </div>
 
