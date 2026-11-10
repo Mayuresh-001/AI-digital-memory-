@@ -21,7 +21,9 @@ const state = {
     plannerViewMode: "table",
     activePlannerFilter: "ALL",
     activePlannerUploadTopicId: null,
-    plannerRecommendations: []
+    plannerRecommendations: [],
+    subjectsViewMode: "cards",
+    activeSubjectPdfUploadTopicId: null
 };
 
 // Comprehensive Master Quiz Question Bank (225 questions, exactly 25 per topic)
@@ -4678,6 +4680,34 @@ function removeNewTopicFile(idx) {
     renderNewTopicFilesPreview();
 }
 
+function setSubjectsViewMode(mode) {
+    state.subjectsViewMode = mode;
+    const cardsContainer = document.getElementById("subjects-container");
+    const tableContainer = document.getElementById("subjects-table-container");
+    const cardsBtn = document.getElementById("subjects-view-cards-btn");
+    const tableBtn = document.getElementById("subjects-view-table-btn");
+
+    if (mode === "table") {
+        if (cardsContainer) cardsContainer.classList.add("hidden");
+        if (tableContainer) tableContainer.classList.remove("hidden");
+        if (tableBtn) {
+            tableBtn.className = "px-2.5 py-1.5 rounded-md bg-white shadow-xs text-blue-700 font-bold flex items-center gap-1.5 transition";
+        }
+        if (cardsBtn) {
+            cardsBtn.className = "px-2.5 py-1.5 rounded-md text-slate-600 hover:text-slate-900 flex items-center gap-1.5 transition";
+        }
+    } else {
+        if (cardsContainer) cardsContainer.classList.remove("hidden");
+        if (tableContainer) tableContainer.classList.add("hidden");
+        if (cardsBtn) {
+            cardsBtn.className = "px-2.5 py-1.5 rounded-md bg-white shadow-xs text-blue-700 font-bold flex items-center gap-1.5 transition";
+        }
+        if (tableBtn) {
+            tableBtn.className = "px-2.5 py-1.5 rounded-md text-slate-600 hover:text-slate-900 flex items-center gap-1.5 transition";
+        }
+    }
+}
+
 async function loadSubjects() {
     try {
         const res = await apiRequest("/subjects");
@@ -4688,6 +4718,16 @@ async function loadSubjects() {
         const topicsRes = await apiRequest("/topics");
         const allTopics = topicsRes.topics;
 
+        // Fetch revision planner recommendations for status indicators if available
+        let planMap = {};
+        try {
+            const planRes = await apiRequest("/planner/recommendations");
+            (planRes.recommendations || []).forEach(r => {
+                planMap[r.topic_id] = r;
+            });
+        } catch(e) {}
+
+        // 1. Render Subject Cards View (with dedicated Topic PDF column in each card)
         container.innerHTML = state.subjects.map(sub => {
             const subTopics = allTopics.filter(t => t.subject_id === sub.id);
             return `
@@ -4710,62 +4750,75 @@ async function loadSubjects() {
 
                         ${sub.description ? `<p class="text-xs text-slate-600 mb-4">${sub.description}</p>` : ''}
 
-                        <div class="space-y-2 mt-4 pt-3 border-t border-slate-100">
+                        <!-- Topics List with dedicated Topic PDF column -->
+                        <div class="space-y-2.5 mt-4 pt-3 border-t border-slate-100">
                             ${subTopics.map(t => {
                                 let atts = t.attachments || [];
                                 if (typeof atts === "string") {
                                     try { atts = JSON.parse(atts); } catch(e) { atts = []; }
                                 }
-                                const hasFiles = atts.length > 0;
-                                const hasNotes = Boolean(t.notes && t.notes.trim());
+                                const pdfFiles = atts.filter(f => (f.name || "").toLowerCase().endsWith(".pdf") || (f.type || "").includes("pdf"));
+                                const primaryFile = pdfFiles[0] || atts[0] || null;
+                                const planItem = planMap[t.id];
 
                                 return `
-                                    <div class="p-2.5 rounded-xl bg-slate-50 hover:bg-slate-100/80 transition text-xs border border-slate-100 flex flex-col gap-1.5">
+                                    <div class="p-2.5 rounded-xl bg-slate-50 hover:bg-slate-100/90 transition text-xs border border-slate-100 flex flex-col gap-2">
+                                        <!-- Header Row: Topic & Difficulty & Actions -->
                                         <div class="flex items-center justify-between">
-                                            <div class="font-bold text-slate-800 hover:text-blue-600 cursor-pointer flex items-center gap-1.5" onclick="openTopicDetailsModal(${t.id})" title="Click to view notes & files">
+                                            <div class="font-bold text-slate-900 hover:text-blue-600 cursor-pointer flex items-center gap-1.5" onclick="openTopicDetailsModal(${t.id})" title="Click to view full notes & files">
                                                 <span>${escapeHtml(t.title)}</span>
                                             </div>
                                             <div class="flex items-center gap-1.5">
+                                                ${planItem ? `
+                                                    <span class="px-1.5 py-0.2 rounded-full text-[9px] font-bold ${
+                                                        planItem.priority === 'HIGH' ? 'bg-rose-100 text-rose-700' :
+                                                        planItem.priority === 'MEDIUM' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'
+                                                    }">${planItem.priority_badge}</span>
+                                                ` : ''}
                                                 <span class="px-2 py-0.5 rounded text-[10px] font-semibold ${
                                                     t.difficulty === 'Easy' ? 'badge-diff-easy' :
                                                     t.difficulty === 'Medium' ? 'badge-diff-medium' : 'badge-diff-hard'
                                                 }">${t.difficulty}</span>
-                                                <button onclick="openTopicDetailsModal(${t.id})" class="text-slate-500 hover:text-blue-600 p-1 transition" title="Inspect notes & attached files">
-                                                    <i class="fas fa-folder-open"></i>
-                                                </button>
-                                                <button onclick="startTopicQuiz(${t.id})" class="text-blue-600 hover:text-blue-800 p-1 transition" title="Take Quiz">
+                                                <button onclick="startTopicQuiz(${t.id})" class="text-blue-600 hover:text-blue-800 p-1" title="Quiz this topic">
                                                     <i class="fas fa-play"></i>
                                                 </button>
                                             </div>
                                         </div>
 
-                                        <!-- Notes & Files indicators -->
-                                        ${(hasFiles || hasNotes) ? `
-                                            <div class="flex items-center gap-2 pt-1 border-t border-slate-200/50 text-[11px]">
-                                                ${hasNotes ? `
-                                                    <button onclick="openTopicDetailsModal(${t.id})" class="text-slate-600 hover:text-slate-900 bg-white border border-slate-200 px-2 py-0.5 rounded-md flex items-center gap-1 text-[10px] font-medium" title="${escapeHtml(t.notes)}">
-                                                        <i class="fas fa-sticky-note text-amber-500"></i>
-                                                        <span class="truncate max-w-[130px]">${escapeHtml(t.notes)}</span>
+                                        <!-- Dedicated TOPIC PDF ROW / COLUMN -->
+                                        <div class="pt-1.5 border-t border-slate-200/50 flex items-center justify-between gap-2"
+                                             ondragover="handlePlannerDropzoneDragOver(event)"
+                                             ondragleave="handlePlannerDropzoneDragLeave(event)"
+                                             ondrop="handleSubjectCellDrop(event, ${t.id})">
+                                            
+                                            ${primaryFile ? `
+                                                <div class="flex items-center gap-1.5 bg-white border border-blue-200 rounded-lg px-2 py-1 max-w-[190px] overflow-hidden truncate">
+                                                    <i class="${getFileIconClass(primaryFile.name, primaryFile.type)} text-xs flex-shrink-0"></i>
+                                                    <span class="font-medium text-[11px] text-slate-800 truncate cursor-pointer hover:text-blue-600" onclick="viewSubjectTopicPdf(${t.id}, 0)" title="${escapeHtml(primaryFile.name)} (Click to view)">
+                                                        ${escapeHtml(primaryFile.name)}
+                                                    </span>
+                                                </div>
+                                                <div class="flex items-center gap-1 flex-shrink-0">
+                                                    <button onclick="viewSubjectTopicPdf(${t.id}, 0)" class="p-1 text-blue-600 hover:bg-blue-50 rounded" title="Preview PDF">
+                                                        <i class="fas fa-eye text-xs"></i>
                                                     </button>
-                                                ` : ''}
-                                                ${hasFiles ? `
-                                                    <button onclick="openTopicDetailsModal(${t.id})" class="text-blue-700 bg-blue-50 border border-blue-200/70 hover:bg-blue-100 px-2 py-0.5 rounded-md flex items-center gap-1 text-[10px] font-semibold">
-                                                        <i class="fas fa-paperclip"></i>
-                                                        <span>${atts.length} file${atts.length === 1 ? '' : 's'}</span>
+                                                    <button onclick="downloadSubjectTopicPdf(${t.id}, 0)" class="p-1 text-emerald-600 hover:bg-emerald-50 rounded" title="Download PDF">
+                                                        <i class="fas fa-download text-xs"></i>
                                                     </button>
-                                                ` : `
-                                                    <button onclick="openTopicDetailsModal(${t.id})" class="text-slate-400 hover:text-blue-600 text-[10px] flex items-center gap-1 ml-auto">
-                                                        <i class="fas fa-plus"></i> Attach file
+                                                    <button onclick="triggerSubjectTopicPdfUpload(${t.id})" class="p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded" title="Add another PDF / Replace">
+                                                        <i class="fas fa-plus text-[10px]"></i>
                                                     </button>
-                                                `}
-                                            </div>
-                                        ` : `
-                                            <div class="flex justify-end pt-0.5">
-                                                <button onclick="openTopicDetailsModal(${t.id})" class="text-slate-400 hover:text-blue-600 text-[10px] flex items-center gap-1">
-                                                    <i class="fas fa-paperclip"></i> Add notes / files
+                                                </div>
+                                            ` : `
+                                                <button onclick="triggerSubjectTopicPdfUpload(${t.id})" class="text-blue-700 bg-blue-50/80 hover:bg-blue-100 border border-dashed border-blue-300 px-2.5 py-1 rounded-lg text-[11px] font-semibold flex items-center gap-1.5 transition">
+                                                    <i class="fas fa-file-upload text-blue-500"></i>
+                                                    <span>+ Add Topic PDF</span>
                                                 </button>
-                                            </div>
-                                        `}
+                                                <button onclick="openTopicDetailsModal(${t.id})" class="text-[10px] text-slate-400 hover:text-slate-600">
+                                                    <i class="fas fa-sticky-note mr-0.5"></i> Notes
+                                                </button>
+                                            `}
+                                        </div>
                                     </div>
                                 `;
                             }).join("")}
@@ -4779,9 +4832,186 @@ async function loadSubjects() {
             `;
         }).join("");
 
+        // 2. Render Full Curriculum Table View (with explicit Topic Revision PDF Column)
+        const tableBody = document.getElementById("subjects-table-tbody");
+        if (tableBody) {
+            tableBody.innerHTML = allTopics.map(t => {
+                const sub = state.subjects.find(s => s.id === t.subject_id) || {};
+                let atts = t.attachments || [];
+                if (typeof atts === "string") {
+                    try { atts = JSON.parse(atts); } catch(e) { atts = []; }
+                }
+                const pdfFiles = atts.filter(f => (f.name || "").toLowerCase().endsWith(".pdf") || (f.type || "").includes("pdf"));
+                const primaryFile = pdfFiles[0] || atts[0] || null;
+                const planItem = planMap[t.id];
+
+                return `
+                    <tr class="hover:bg-slate-50 transition border-b border-slate-100">
+                        <td class="py-3 px-3.5 whitespace-nowrap">
+                            <span class="text-xs font-semibold px-2 py-0.5 rounded text-white" style="background-color: ${sub.color || '#2563eb'}">
+                                ${escapeHtml(sub.name || 'General')}
+                            </span>
+                        </td>
+                        <td class="py-3 px-3.5">
+                            <div class="font-bold text-slate-900 text-xs hover:text-blue-600 cursor-pointer" onclick="openTopicDetailsModal(${t.id})">
+                                ${escapeHtml(t.title)}
+                            </div>
+                        </td>
+                        <td class="py-3 px-3.5 whitespace-nowrap">
+                            <span class="px-2 py-0.5 rounded text-[10px] font-semibold ${
+                                t.difficulty === 'Easy' ? 'badge-diff-easy' :
+                                t.difficulty === 'Medium' ? 'badge-diff-medium' : 'badge-diff-hard'
+                            }">${t.difficulty}</span>
+                        </td>
+                        <td class="py-3 px-3.5 whitespace-nowrap">
+                            ${planItem ? `
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                    planItem.priority === 'HIGH' ? 'bg-rose-100 text-rose-700' :
+                                    planItem.priority === 'MEDIUM' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'
+                                }">${planItem.priority_badge} (${planItem.retention_health_pct}%)</span>
+                            ` : `
+                                <span class="text-[10px] text-slate-400">Normal</span>
+                            `}
+                        </td>
+                        <td class="py-3 px-3.5 max-w-xs truncate text-xs text-slate-500">
+                            ${t.notes ? escapeHtml(t.notes) : '<span class="text-slate-300 italic">No notes</span>'}
+                        </td>
+                        <!-- TOPIC REVISION PDF COLUMN -->
+                        <td class="py-3 px-3.5 bg-blue-50/40 border-x border-blue-100"
+                            ondragover="handlePlannerDropzoneDragOver(event)"
+                            ondragleave="handlePlannerDropzoneDragLeave(event)"
+                            ondrop="handleSubjectCellDrop(event, ${t.id})">
+                            
+                            ${primaryFile ? `
+                                <div class="flex items-center justify-between gap-2 p-1.5 bg-white rounded-lg border border-blue-200 shadow-xs max-w-xs">
+                                    <div class="flex items-center gap-1.5 overflow-hidden truncate cursor-pointer" onclick="viewSubjectTopicPdf(${t.id}, 0)" title="${escapeHtml(primaryFile.name)} (Click to view)">
+                                        <i class="${getFileIconClass(primaryFile.name, primaryFile.type)} text-xs flex-shrink-0"></i>
+                                        <span class="font-medium text-xs text-slate-900 truncate">${escapeHtml(primaryFile.name)}</span>
+                                    </div>
+                                    <div class="flex items-center gap-1 flex-shrink-0">
+                                        <button onclick="viewSubjectTopicPdf(${t.id}, 0)" class="p-1 text-blue-600 hover:bg-blue-50 rounded" title="Preview PDF">
+                                            <i class="fas fa-eye text-xs"></i>
+                                        </button>
+                                        <button onclick="downloadSubjectTopicPdf(${t.id}, 0)" class="p-1 text-emerald-600 hover:bg-emerald-50 rounded" title="Download">
+                                            <i class="fas fa-download text-xs"></i>
+                                        </button>
+                                        <button onclick="triggerSubjectTopicPdfUpload(${t.id})" class="p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded" title="Add / Replace PDF">
+                                            <i class="fas fa-plus text-[10px]"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            ` : `
+                                <div class="flex items-center gap-2">
+                                    <button onclick="triggerSubjectTopicPdfUpload(${t.id})" class="px-2.5 py-1.5 rounded-lg border border-dashed border-blue-300 bg-white hover:bg-blue-50/80 text-blue-700 font-semibold text-[11px] flex items-center gap-1.5 transition shadow-xs">
+                                        <i class="fas fa-file-upload text-blue-500"></i>
+                                        <span>+ Add Topic PDF</span>
+                                    </button>
+                                </div>
+                            `}
+                        </td>
+                        <td class="py-3 px-3.5 text-right whitespace-nowrap">
+                            <div class="flex items-center justify-end gap-1.5">
+                                <button onclick="startTopicQuiz(${t.id})" class="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-semibold" title="Quiz this topic">
+                                    <i class="fas fa-play mr-1"></i>Quiz
+                                </button>
+                                <button onclick="openTopicDetailsModal(${t.id})" class="p-1 text-slate-400 hover:text-slate-600" title="Topic Details">
+                                    <i class="fas fa-folder-open text-xs"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join("");
+        }
+
+        setSubjectsViewMode(state.subjectsViewMode || "cards");
+
     } catch (e) {
         showToast("Error loading subjects: " + e.message, "error");
     }
+}
+
+// Handlers for Subject Topic PDF upload and viewing
+function triggerSubjectTopicPdfUpload(topicId) {
+    state.activeSubjectPdfUploadTopicId = topicId;
+    const input = document.getElementById("subject-topic-pdf-input");
+    if (input) {
+        input.value = "";
+        input.click();
+    }
+}
+
+async function handleSubjectTopicPdfUpload(e) {
+    if (!e.target || !e.target.files || !e.target.files.length) return;
+    const topicId = state.activeSubjectPdfUploadTopicId;
+    if (!topicId) return;
+
+    const file = e.target.files[0];
+    await processAndUploadSubjectTopicPdf(file, topicId);
+    e.target.value = "";
+}
+
+async function processAndUploadSubjectTopicPdf(file, topicId) {
+    if (!file) return;
+    if (file.size > 25 * 1024 * 1024) {
+        showToast("File is too large (maximum 25MB).", "error");
+        return;
+    }
+
+    try {
+        const dataUrl = await readFileAsDataURL(file);
+        const newPdf = {
+            id: "pdf_" + Date.now(),
+            name: file.name,
+            size: file.size,
+            type: file.type || "application/pdf",
+            data: dataUrl,
+            uploaded_at: new Date().toISOString()
+        };
+
+        const res = await apiRequest(`/planner/topics/${topicId}/pdf`, {
+            method: "POST",
+            body: JSON.stringify(newPdf)
+        });
+
+        showToast(res.message || `Topic PDF '${file.name}' attached successfully!`, "success");
+        loadSubjects();
+        loadPlanner(state.activePlannerFilter || "ALL");
+    } catch (err) {
+        showToast("Error uploading PDF: " + err.message, "error");
+    }
+}
+
+async function handleSubjectCellDrop(e, topicId) {
+    e.preventDefault();
+    e.stopPropagation();
+    e.currentTarget.classList.remove("bg-blue-100/70", "border-blue-400");
+
+    if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) {
+        const file = e.dataTransfer.files[0];
+        await processAndUploadSubjectTopicPdf(file, topicId);
+    }
+}
+
+function viewSubjectTopicPdf(topicId, attachmentIdx = 0) {
+    openTopicDetailsModal(topicId).then(() => {
+        const topic = state.activeTopicDetails;
+        if (!topic) return;
+        let atts = topic.attachments || [];
+        if (typeof atts === "string") {
+            try { atts = JSON.parse(atts); } catch(e) { atts = []; }
+        }
+        const pdfFiles = atts.filter(f => (f.name || "").toLowerCase().endsWith(".pdf") || (f.type || "").includes("pdf"));
+        const targetFile = pdfFiles[attachmentIdx] || atts[attachmentIdx];
+        const realIdx = atts.indexOf(targetFile);
+        previewTopicFile(realIdx >= 0 ? realIdx : 0);
+    });
+}
+
+function downloadSubjectTopicPdf(topicId, attachmentIdx = 0) {
+    openTopicDetailsModal(topicId).then(() => {
+        downloadTopicFile(attachmentIdx);
+    });
 }
 
 async function handleAddSubjectSubmit(e) {
