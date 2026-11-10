@@ -328,21 +328,66 @@
                 <!-- VIEW 2: AI REVISION PLANNER                                       -->
                 <!-- ----------------------------------------------------------------- -->
                 <div id="planner-view" class="view-container space-y-6 hidden">
-                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                         <div>
                             <h2 class="text-2xl font-extrabold text-slate-900">AI Personalized Revision Planner</h2>
-                            <p class="text-sm text-slate-500">Prioritized revision schedule generated from your retention curve and machine learning models.</p>
+                            <p class="text-sm text-slate-500">Prioritized revision schedule with topic study PDFs, memory retention health, and one-click reviews.</p>
                         </div>
-                        <div class="flex items-center gap-2 bg-slate-100 p-1 rounded-xl text-xs font-semibold">
-                            <button onclick="loadPlanner('ALL')" class="px-3 py-1.5 rounded-lg bg-white shadow-sm text-slate-800">All Topics</button>
-                            <button onclick="loadPlanner('HIGH')" class="px-3 py-1.5 rounded-lg text-rose-700 hover:bg-white/60">High Priority (<span id="planner-count-high">0</span>)</button>
-                            <button onclick="loadPlanner('MEDIUM')" class="px-3 py-1.5 rounded-lg text-amber-700 hover:bg-white/60">Medium (<span id="planner-count-med">0</span>)</button>
-                            <button onclick="loadPlanner('LOW')" class="px-3 py-1.5 rounded-lg text-emerald-700 hover:bg-white/60">Low (<span id="planner-count-low">0</span>)</button>
+                        <div class="flex flex-wrap items-center gap-2.5">
+                            <!-- Layout Mode Toggle (Table View with dedicated Topic PDF column vs Cards View) -->
+                            <div class="flex items-center bg-slate-200/80 p-0.5 rounded-lg text-xs font-semibold">
+                                <button id="planner-view-table-btn" onclick="setPlannerViewMode('table')" class="px-2.5 py-1.5 rounded-md bg-white shadow-xs text-blue-700 font-bold flex items-center gap-1.5 transition">
+                                    <i class="fas fa-table"></i>
+                                    <span>Table View (PDF Column)</span>
+                                </button>
+                                <button id="planner-view-cards-btn" onclick="setPlannerViewMode('cards')" class="px-2.5 py-1.5 rounded-md text-slate-600 hover:text-slate-900 flex items-center gap-1.5 transition">
+                                    <i class="fas fa-th-large text-slate-500"></i>
+                                    <span>Cards View</span>
+                                </button>
+                            </div>
+
+                            <!-- Priority Filter -->
+                            <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-xl text-xs font-semibold">
+                                <button onclick="loadPlanner('ALL')" class="px-3 py-1.5 rounded-lg bg-white shadow-sm text-slate-800">All Topics</button>
+                                <button onclick="loadPlanner('HIGH')" class="px-3 py-1.5 rounded-lg text-rose-700 hover:bg-white/60">High (<span id="planner-count-high">0</span>)</button>
+                                <button onclick="loadPlanner('MEDIUM')" class="px-3 py-1.5 rounded-lg text-amber-700 hover:bg-white/60">Medium (<span id="planner-count-med">0</span>)</button>
+                                <button onclick="loadPlanner('LOW')" class="px-3 py-1.5 rounded-lg text-emerald-700 hover:bg-white/60">Low (<span id="planner-count-low">0</span>)</button>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Recommendations Grid -->
-                    <div id="planner-cards-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                    <!-- Hidden File Input for uploading Topic PDF directly from Planner table or card -->
+                    <input id="planner-pdf-upload-input" type="file" accept=".pdf,application/pdf,.doc,.docx,.txt,.md" class="hidden" onchange="handlePlannerPdfUpload(event)">
+
+                    <!-- 1. TABLE VIEW (Default with dedicated Topic PDF Column) -->
+                    <div id="planner-table-container" class="card-soft rounded-xl overflow-hidden shadow-xs border border-slate-200">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead class="bg-slate-50 text-xs font-semibold text-slate-600 border-b border-slate-200">
+                                    <tr>
+                                        <th class="py-3 px-3.5 whitespace-nowrap">Priority</th>
+                                        <th class="py-3 px-3.5 whitespace-nowrap">Topic & Subject</th>
+                                        <th class="py-3 px-3.5 whitespace-nowrap">Memory Retention</th>
+                                        <th class="py-3 px-3.5 whitespace-nowrap text-center">Last Studied</th>
+                                        <th class="py-3 px-3.5 whitespace-nowrap text-center">Quiz Score</th>
+                                        <th class="py-3 px-3.5 whitespace-nowrap bg-blue-50/70 text-blue-900 border-x border-blue-100">
+                                            <div class="flex items-center gap-1.5 font-bold">
+                                                <i class="fas fa-file-pdf text-rose-500 text-sm"></i>
+                                                <span>Topic PDF / Study Document</span>
+                                            </div>
+                                        </th>
+                                        <th class="py-3 px-3.5 whitespace-nowrap text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="planner-table-tbody" class="divide-y divide-slate-100 text-xs text-slate-700">
+                                    <!-- Populated dynamically via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- 2. CARDS VIEW -->
+                    <div id="planner-cards-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 hidden">
                         <!-- Populated dynamically via JS -->
                     </div>
                 </div>

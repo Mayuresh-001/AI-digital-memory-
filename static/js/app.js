@@ -17,7 +17,11 @@ const state = {
     subjects: [],
     topics: [],
     newTopicFiles: [],
-    activeTopicDetails: null
+    activeTopicDetails: null,
+    plannerViewMode: "table",
+    activePlannerFilter: "ALL",
+    activePlannerUploadTopicId: null,
+    plannerRecommendations: []
 };
 
 // Comprehensive Master Quiz Question Bank (225 questions, exactly 25 per topic)
@@ -3173,12 +3177,19 @@ const LocalDB = {
                     ? `MEDIUM PRIORITY - Schedule revision for ${t.title} soon. ${daysElapsed} days have passed and retention is decaying.`
                     : `LOW PRIORITY - ${t.title} is well-retained. Studied recently with solid score.`;
 
+                let atts = t.attachments || [];
+                if (typeof atts === "string") {
+                    try { atts = JSON.parse(atts); } catch(e) { atts = []; }
+                }
+
                 return {
                     topic_id: t.id,
                     title: t.title,
                     subject_name: sub.name || "General",
                     subject_color: sub.color || "#2563eb",
                     difficulty: t.difficulty,
+                    notes: t.notes || "",
+                    attachments: atts,
                     days_elapsed: daysElapsed,
                     last_studied: lastSess.study_date || "Never",
                     quiz_score: lastSess.quiz_score !== undefined ? lastSess.quiz_score : null,
@@ -3244,6 +3255,33 @@ const LocalDB = {
                     }
                 },
                 recent_activity: recentAct
+            };
+        }
+
+        if (url.startsWith("/planner/topics/") && url.endsWith("/pdf") && method === "POST") {
+            const topicId = parseInt(url.split("/")[3]);
+            const topic = topics.find(t => t.id === topicId);
+            if (!topic) throw new Error("Topic not found.");
+            if (!topic.attachments) topic.attachments = [];
+            let atts = topic.attachments;
+            if (typeof atts === "string") {
+                try { atts = JSON.parse(atts); } catch(e) { atts = []; }
+            }
+            const newPdf = {
+                id: "pdf_" + Date.now(),
+                name: body.name || "Topic_Revision_Material.pdf",
+                size: body.size || 1024,
+                type: body.type || "application/pdf",
+                data: body.data,
+                uploaded_at: new Date().toISOString()
+            };
+            atts.push(newPdf);
+            topic.attachments = atts;
+            localStorage.setItem("adm_topics", JSON.stringify(topics));
+            return {
+                status: "success",
+                message: `Topic PDF '${newPdf.name}' attached successfully to '${topic.title}'.`,
+                attachment: newPdf
             };
         }
 
@@ -3929,14 +3967,42 @@ function renderRecentActivity(activities) {
 }
 
 // -------------------------------------------------------------------------
-// 2. AI REVISION PLANNER
+// 2. AI REVISION PLANNER (With Table View & Dedicated Topic PDF Column)
 // -------------------------------------------------------------------------
+function setPlannerViewMode(mode) {
+    state.plannerViewMode = mode;
+    const tableContainer = document.getElementById("planner-table-container");
+    const cardsContainer = document.getElementById("planner-cards-container");
+    const tableBtn = document.getElementById("planner-view-table-btn");
+    const cardsBtn = document.getElementById("planner-view-cards-btn");
+
+    if (mode === "table") {
+        if (tableContainer) tableContainer.classList.remove("hidden");
+        if (cardsContainer) cardsContainer.classList.add("hidden");
+        if (tableBtn) {
+            tableBtn.className = "px-2.5 py-1.5 rounded-md bg-white shadow-xs text-blue-700 font-bold flex items-center gap-1.5 transition";
+        }
+        if (cardsBtn) {
+            cardsBtn.className = "px-2.5 py-1.5 rounded-md text-slate-600 hover:text-slate-900 flex items-center gap-1.5 transition";
+        }
+    } else {
+        if (tableContainer) tableContainer.classList.add("hidden");
+        if (cardsContainer) cardsContainer.classList.remove("hidden");
+        if (cardsBtn) {
+            cardsBtn.className = "px-2.5 py-1.5 rounded-md bg-white shadow-xs text-blue-700 font-bold flex items-center gap-1.5 transition";
+        }
+        if (tableBtn) {
+            tableBtn.className = "px-2.5 py-1.5 rounded-md text-slate-600 hover:text-slate-900 flex items-center gap-1.5 transition";
+        }
+    }
+}
+
 async function loadPlanner(filterPriority = "ALL") {
     try {
+        state.activePlannerFilter = filterPriority;
         const data = await apiRequest("/planner/recommendations");
-        const list = data.recommendations;
-        const container = document.getElementById("planner-cards-container");
-        if (!container) return;
+        state.plannerRecommendations = data.recommendations || [];
+        const list = state.plannerRecommendations;
 
         let filtered = list;
         if (filterPriority !== "ALL") {
@@ -3944,22 +4010,184 @@ async function loadPlanner(filterPriority = "ALL") {
         }
 
         // Summary counts
-        document.getElementById("planner-count-high").textContent = data.summary.high_priority_count;
-        document.getElementById("planner-count-med").textContent = data.summary.medium_priority_count;
-        document.getElementById("planner-count-low").textContent = data.summary.low_priority_count;
+        const highEl = document.getElementById("planner-count-high");
+        if (highEl) highEl.textContent = data.summary.high_priority_count;
+        const medEl = document.getElementById("planner-count-med");
+        if (medEl) medEl.textContent = data.summary.medium_priority_count;
+        const lowEl = document.getElementById("planner-count-low");
+        if (lowEl) lowEl.textContent = data.summary.low_priority_count;
 
-        if (!filtered.length) {
-            container.innerHTML = `
-                <div class="col-span-full text-center py-12 bg-white rounded-xl border border-slate-200">
-                    <i class="fas fa-check-double text-4xl text-emerald-500 mb-3"></i>
-                    <h3 class="text-base font-semibold text-slate-800">No topics in this priority tier</h3>
-                    <p class="text-sm text-slate-500 mt-1">Keep studying and logging sessions to build your digital memory.</p>
-                </div>
-            `;
-            return;
+        // Render both views
+        renderPlannerTable(filtered);
+        renderPlannerCards(filtered);
+
+        // Apply active view mode
+        setPlannerViewMode(state.plannerViewMode || "table");
+
+    } catch (e) {
+        showToast("Error loading revision planner: " + e.message, "error");
+    }
+}
+
+function renderPlannerTable(items) {
+    const tbody = document.getElementById("planner-table-tbody");
+    if (!tbody) return;
+
+    if (!items.length) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="7" class="text-center py-12 bg-white">
+                    <i class="fas fa-check-double text-3xl text-emerald-500 mb-2"></i>
+                    <h4 class="text-sm font-semibold text-slate-800">No topics in this priority tier</h4>
+                    <p class="text-xs text-slate-400 mt-0.5">Keep studying and logging sessions to build your digital memory.</p>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    tbody.innerHTML = items.map(item => {
+        let atts = item.attachments || [];
+        if (typeof atts === "string") {
+            try { atts = JSON.parse(atts); } catch(e) { atts = []; }
         }
 
-        container.innerHTML = filtered.map(item => `
+        // Filter or prioritize PDF attachments
+        const pdfFiles = atts.filter(f => (f.name || "").toLowerCase().endsWith(".pdf") || (f.type || "").includes("pdf"));
+        const primaryFile = pdfFiles[0] || atts[0] || null;
+
+        return `
+            <tr class="hover:bg-slate-50/80 transition border-b border-slate-100">
+                <!-- 1. Priority -->
+                <td class="py-3 px-3.5 whitespace-nowrap">
+                    <span class="text-[11px] font-bold px-2.5 py-0.5 rounded-full inline-flex items-center gap-1 ${
+                        item.priority === 'HIGH' ? 'bg-rose-100 text-rose-700' :
+                        item.priority === 'MEDIUM' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'
+                    }">
+                        <i class="fas ${item.priority === 'HIGH' ? 'fa-exclamation-circle' : item.priority === 'MEDIUM' ? 'fa-clock' : 'fa-check-circle'} text-[10px]"></i>
+                        ${item.priority_badge}
+                    </span>
+                </td>
+
+                <!-- 2. Topic & Subject -->
+                <td class="py-3 px-3.5">
+                    <div class="font-bold text-slate-900 hover:text-blue-600 cursor-pointer text-xs" onclick="openTopicDetailsModal(${item.topic_id})" title="Click to view full notes & files">
+                        ${escapeHtml(item.title)}
+                    </div>
+                    <div class="flex items-center gap-1.5 mt-0.5">
+                        <span class="text-[10px] font-semibold px-1.5 py-0.2 rounded text-white" style="background-color: ${item.subject_color}">
+                            ${escapeHtml(item.subject_name)}
+                        </span>
+                        <span class="text-[10px] text-slate-400">• ${item.difficulty}</span>
+                    </div>
+                </td>
+
+                <!-- 3. Memory Retention -->
+                <td class="py-3 px-3.5 whitespace-nowrap">
+                    <div class="flex items-center gap-2">
+                        <div class="w-16 bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                            <div class="h-1.5 rounded-full ${item.retention_health_pct >= 70 ? 'bg-emerald-500' : item.retention_health_pct >= 50 ? 'bg-amber-500' : 'bg-rose-500'}" style="width: ${item.retention_health_pct}%"></div>
+                        </div>
+                        <span class="font-bold text-xs ${item.retention_health_pct >= 70 ? 'text-emerald-600' : item.retention_health_pct >= 50 ? 'text-amber-600' : 'text-rose-600'}">
+                            ${item.retention_health_pct}%
+                        </span>
+                    </div>
+                </td>
+
+                <!-- 4. Last Studied -->
+                <td class="py-3 px-3.5 text-center whitespace-nowrap text-xs text-slate-600 font-medium">
+                    ${item.days_elapsed}d ago
+                </td>
+
+                <!-- 5. Quiz Score / Mistakes -->
+                <td class="py-3 px-3.5 text-center whitespace-nowrap text-xs">
+                    <span class="font-bold ${item.quiz_score !== null && item.quiz_score < 60 ? 'text-rose-600' : 'text-slate-800'}">
+                        ${item.quiz_score !== null ? `${item.quiz_score}%` : 'N/A'}
+                    </span>
+                    ${item.mistakes_count > 0 ? `<span class="text-[10px] text-amber-600 block">(${item.mistakes_count} mistake${item.mistakes_count > 1 ? 's' : ''})</span>` : ''}
+                </td>
+
+                <!-- 6. TOPIC PDF / STUDY DOCUMENT COLUMN -->
+                <td class="py-3 px-3.5 bg-blue-50/30 border-x border-blue-100/70"
+                    ondragover="handlePlannerDropzoneDragOver(event)"
+                    ondragleave="handlePlannerDropzoneDragLeave(event)"
+                    ondrop="handlePlannerDropzoneDrop(event, ${item.topic_id})">
+                    
+                    ${primaryFile ? `
+                        <div class="flex items-center justify-between gap-2 p-1.5 bg-white rounded-lg border border-blue-200/80 shadow-xs max-w-xs">
+                            <div class="flex items-center gap-2 overflow-hidden truncate cursor-pointer" onclick="viewPlannerTopicPdf(${item.topic_id}, 0)" title="${escapeHtml(primaryFile.name)} (Click to view)">
+                                <i class="${getFileIconClass(primaryFile.name, primaryFile.type)} text-sm flex-shrink-0"></i>
+                                <div class="truncate">
+                                    <div class="font-semibold text-slate-900 text-xs truncate">${escapeHtml(primaryFile.name)}</div>
+                                    <div class="text-[9px] text-slate-400">${formatFileSize(primaryFile.size)}${atts.length > 1 ? ` • +${atts.length - 1} more` : ''}</div>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-1 flex-shrink-0">
+                                <button onclick="viewPlannerTopicPdf(${item.topic_id}, 0)" class="p-1 text-blue-600 hover:bg-blue-50 rounded" title="Open & Preview PDF">
+                                    <i class="fas fa-eye text-xs"></i>
+                                </button>
+                                <button onclick="downloadPlannerTopicPdf(${item.topic_id}, 0)" class="p-1 text-emerald-600 hover:bg-emerald-50 rounded" title="Download PDF to device">
+                                    <i class="fas fa-download text-xs"></i>
+                                </button>
+                                <button onclick="triggerPlannerPdfUpload(${item.topic_id})" class="p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded" title="Attach another file or replace PDF">
+                                    <i class="fas fa-plus text-[10px]"></i>
+                                </button>
+                            </div>
+                        </div>
+                    ` : `
+                        <div class="flex items-center gap-2">
+                            <button onclick="triggerPlannerPdfUpload(${item.topic_id})" class="px-2.5 py-1.5 rounded-lg border border-dashed border-blue-300 bg-white hover:bg-blue-50/80 text-blue-700 font-semibold text-[11px] flex items-center gap-1.5 transition shadow-xs">
+                                <i class="fas fa-file-upload text-blue-500"></i>
+                                <span>+ Add Topic PDF</span>
+                            </button>
+                            <span class="text-[10px] text-slate-400 hidden xl:inline">or drag & drop here</span>
+                        </div>
+                    `}
+                </td>
+
+                <!-- 7. Actions -->
+                <td class="py-3 px-3.5 text-right whitespace-nowrap">
+                    <div class="flex items-center justify-end gap-1.5">
+                        <button onclick="markRevisedDirect(${item.topic_id})" class="px-2.5 py-1 text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg transition" title="Mark as revised today">
+                            <i class="fas fa-check mr-1"></i>Revised
+                        </button>
+                        <button onclick="startTopicQuiz(${item.topic_id})" class="px-2.5 py-1 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition" title="Test with active retrieval quiz">
+                            <i class="fas fa-play mr-1"></i>Quiz
+                        </button>
+                        <button onclick="openTopicDetailsModal(${item.topic_id})" class="p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition" title="View notes and all files">
+                            <i class="fas fa-ellipsis-v text-xs"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join("");
+}
+
+function renderPlannerCards(items) {
+    const container = document.getElementById("planner-cards-container");
+    if (!container) return;
+
+    if (!items.length) {
+        container.innerHTML = `
+            <div class="col-span-full text-center py-12 bg-white rounded-xl border border-slate-200">
+                <i class="fas fa-check-double text-4xl text-emerald-500 mb-3"></i>
+                <h3 class="text-base font-semibold text-slate-800">No topics in this priority tier</h3>
+                <p class="text-sm text-slate-500 mt-1">Keep studying and logging sessions to build your digital memory.</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = items.map(item => {
+        let atts = item.attachments || [];
+        if (typeof atts === "string") {
+            try { atts = JSON.parse(atts); } catch(e) { atts = []; }
+        }
+        const pdfFiles = atts.filter(f => (f.name || "").toLowerCase().endsWith(".pdf") || (f.type || "").includes("pdf"));
+        const primaryFile = pdfFiles[0] || atts[0] || null;
+
+        return `
             <div class="card-soft p-5 rounded-xl flex flex-col justify-between border-l-4 ${
                 item.priority === 'HIGH' ? 'border-l-rose-500' :
                 item.priority === 'MEDIUM' ? 'border-l-amber-500' : 'border-l-emerald-500'
@@ -3967,7 +4195,7 @@ async function loadPlanner(filterPriority = "ALL") {
                 <div>
                     <div class="flex items-center justify-between gap-2 mb-2">
                         <span class="text-xs font-semibold px-2.5 py-0.5 rounded text-white" style="background-color: ${item.subject_color}">
-                            ${item.subject_name}
+                            ${escapeHtml(item.subject_name)}
                         </span>
                         <span class="text-xs font-bold px-2 py-0.5 rounded-full ${
                             item.priority === 'HIGH' ? 'bg-rose-100 text-rose-700' :
@@ -3975,7 +4203,7 @@ async function loadPlanner(filterPriority = "ALL") {
                         }">${item.priority_badge}</span>
                     </div>
 
-                    <h4 class="text-lg font-bold text-slate-900 mb-1">${item.title}</h4>
+                    <h4 class="text-lg font-bold text-slate-900 mb-1 hover:text-blue-600 cursor-pointer" onclick="openTopicDetailsModal(${item.topic_id})">${escapeHtml(item.title)}</h4>
 
                     <!-- Retention Progress Bar -->
                     <div class="mt-3 mb-4">
@@ -4010,6 +4238,38 @@ async function loadPlanner(filterPriority = "ALL") {
                         </div>
                     </div>
 
+                    <!-- TOPIC PDF / STUDY MATERIALS CARD SECTION -->
+                    <div class="mb-3.5 p-2.5 rounded-xl bg-blue-50/40 border border-blue-100/80">
+                        <div class="flex items-center justify-between text-xs mb-1.5">
+                            <span class="font-bold text-slate-700 flex items-center gap-1.5">
+                                <i class="fas fa-file-pdf text-rose-500"></i> Topic Study PDF
+                            </span>
+                            <button onclick="triggerPlannerPdfUpload(${item.topic_id})" class="text-[11px] font-semibold text-blue-600 hover:text-blue-800">
+                                + Upload PDF
+                            </button>
+                        </div>
+                        ${primaryFile ? `
+                            <div class="flex items-center justify-between gap-2 p-1.5 bg-white rounded-lg border border-blue-200 shadow-xs">
+                                <div class="flex items-center gap-2 overflow-hidden truncate cursor-pointer" onclick="viewPlannerTopicPdf(${item.topic_id}, 0)">
+                                    <i class="${getFileIconClass(primaryFile.name, primaryFile.type)} flex-shrink-0"></i>
+                                    <span class="font-medium text-xs text-slate-800 truncate">${escapeHtml(primaryFile.name)}</span>
+                                </div>
+                                <div class="flex items-center gap-1">
+                                    <button onclick="viewPlannerTopicPdf(${item.topic_id}, 0)" class="px-2 py-0.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded text-[11px] font-semibold">
+                                        View
+                                    </button>
+                                    <button onclick="downloadPlannerTopicPdf(${item.topic_id}, 0)" class="p-1 text-slate-500 hover:text-slate-800">
+                                        <i class="fas fa-download text-xs"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        ` : `
+                            <div onclick="triggerPlannerPdfUpload(${item.topic_id})" class="text-center py-2 bg-white rounded-lg border border-dashed border-blue-200 hover:border-blue-400 cursor-pointer transition">
+                                <span class="text-xs font-semibold text-blue-600"><i class="fas fa-cloud-upload-alt mr-1"></i> Attach Topic PDF from device</span>
+                            </div>
+                        `}
+                    </div>
+
                     <!-- AI Diagnostic Explanation -->
                     <div class="p-3 rounded-lg bg-slate-50 text-xs text-slate-700 leading-relaxed mb-4">
                         <i class="fas fa-lightbulb text-amber-500 mr-1.5"></i>
@@ -4027,11 +4287,130 @@ async function loadPlanner(filterPriority = "ALL") {
                     </button>
                 </div>
             </div>
-        `).join("");
+        `;
+    }).join("");
+}
 
-    } catch (e) {
-        showToast("Error loading revision planner: " + e.message, "error");
+// Planner PDF upload and viewing handlers
+function triggerPlannerPdfUpload(topicId) {
+    state.activePlannerUploadTopicId = topicId;
+    const input = document.getElementById("planner-pdf-upload-input");
+    if (input) {
+        input.value = "";
+        input.click();
     }
+}
+
+async function handlePlannerPdfUpload(e) {
+    if (!e.target || !e.target.files || !e.target.files.length) return;
+    const topicId = state.activePlannerUploadTopicId;
+    if (!topicId) return;
+
+    const file = e.target.files[0];
+    await processAndUploadPlannerPdf(file, topicId);
+    e.target.value = "";
+}
+
+async function processAndUploadPlannerPdf(file, topicId) {
+    if (!file) return;
+    if (file.size > 25 * 1024 * 1024) {
+        showToast("File is too large (maximum 25MB).", "error");
+        return;
+    }
+
+    try {
+        const dataUrl = await readFileAsDataURL(file);
+        const newPdf = {
+            id: "pdf_" + Date.now(),
+            name: file.name,
+            size: file.size,
+            type: file.type || "application/pdf",
+            data: dataUrl,
+            uploaded_at: new Date().toISOString()
+        };
+
+        const res = await apiRequest(`/planner/topics/${topicId}/pdf`, {
+            method: "POST",
+            body: JSON.stringify(newPdf)
+        });
+
+        showToast(res.message || `PDF '${file.name}' added to planner!`, "success");
+        await loadPlanner(state.activePlannerFilter || "ALL");
+        loadSubjects();
+    } catch (err) {
+        showToast("Error uploading PDF: " + err.message, "error");
+    }
+}
+
+function handlePlannerDropzoneDragOver(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    e.currentTarget.classList.add("bg-blue-100/70", "border-blue-400");
+}
+
+function handlePlannerDropzoneDragLeave(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    e.currentTarget.classList.remove("bg-blue-100/70", "border-blue-400");
+}
+
+async function handlePlannerDropzoneDrop(e, topicId) {
+    e.preventDefault();
+    e.stopPropagation();
+    e.currentTarget.classList.remove("bg-blue-100/70", "border-blue-400");
+
+    if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) {
+        const file = e.dataTransfer.files[0];
+        state.activePlannerUploadTopicId = topicId;
+        await processAndUploadPlannerPdf(file, topicId);
+    }
+}
+
+function viewPlannerTopicPdf(topicId, attachmentIdx = 0) {
+    const item = (state.plannerRecommendations || []).find(p => p.topic_id === topicId);
+    if (!item) return;
+
+    let atts = item.attachments || [];
+    if (typeof atts === "string") {
+        try { atts = JSON.parse(atts); } catch(e) { atts = []; }
+    }
+    const pdfFiles = atts.filter(f => (f.name || "").toLowerCase().endsWith(".pdf") || (f.type || "").includes("pdf"));
+    const targetFile = pdfFiles[attachmentIdx] || atts[attachmentIdx];
+
+    if (!targetFile) {
+        openTopicDetailsModal(topicId);
+        return;
+    }
+
+    state.activeTopicDetails = {
+        id: item.topic_id,
+        title: item.title,
+        attachments: atts
+    };
+
+    const realIdx = atts.indexOf(targetFile);
+    previewTopicFile(realIdx >= 0 ? realIdx : 0);
+}
+
+function downloadPlannerTopicPdf(topicId, attachmentIdx = 0) {
+    const item = (state.plannerRecommendations || []).find(p => p.topic_id === topicId);
+    if (!item) return;
+
+    let atts = item.attachments || [];
+    if (typeof atts === "string") {
+        try { atts = JSON.parse(atts); } catch(e) { atts = []; }
+    }
+    const pdfFiles = atts.filter(f => (f.name || "").toLowerCase().endsWith(".pdf") || (f.type || "").includes("pdf"));
+    const targetFile = pdfFiles[attachmentIdx] || atts[attachmentIdx];
+    if (!targetFile) return;
+
+    const a = document.createElement("a");
+    a.href = targetFile.data;
+    a.download = targetFile.name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    showToast(`Downloading ${targetFile.name}`, "info");
 }
 
 async function markRevisedDirect(topicId) {

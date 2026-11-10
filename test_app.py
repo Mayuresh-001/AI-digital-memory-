@@ -13,7 +13,7 @@ from backend.routes.auth_routes import login, LoginRequest, register, RegisterRe
 from backend.routes.subject_routes import list_subjects, list_topics
 from backend.routes.session_routes import list_sessions, create_session as add_session, SessionCreate
 from backend.routes.quiz_routes import get_quiz_topics, get_topic_questions, submit_quiz_attempt, QuizSubmission
-from backend.routes.planner_routes import get_recommendations, mark_topic_revised, MarkRevisedRequest
+from backend.routes.planner_routes import get_recommendations, mark_topic_revised, MarkRevisedRequest, upload_planner_topic_pdf, TopicPdfUpload
 from backend.routes.ml_routes import get_ml_status, predict_sandbox, PredictSandboxRequest
 from backend.routes.analytics_routes import get_dashboard_analytics
 
@@ -57,6 +57,20 @@ def run_tests():
     assert top_rec is not None
     print(f"  [OK] Revision Planner: Top recommendation is '{top_rec['title']}' ({top_rec['priority_badge']})")
     print(f"      Explanation: {top_rec['explanation']}")
+
+    # Test Revision Planner Topic PDF upload
+    pdf_res = upload_planner_topic_pdf(
+        topic_id=top_rec["topic_id"],
+        req=TopicPdfUpload(
+            name=f"{top_rec['title'].replace(' ', '_')}_Revision_Notes.pdf",
+            data="data:application/pdf;base64,JVBERi0xLjQK...",
+            size=142000,
+            type="application/pdf"
+        ),
+        current_student=student
+    )
+    assert pdf_res["status"] == "success"
+    print(f"  [OK] Revision Planner Topic PDF uploaded: '{pdf_res['attachment']['name']}'")
 
     # 6. Test Quiz Taking & Mistake Tracking
     topic_id = top_rec["topic_id"]

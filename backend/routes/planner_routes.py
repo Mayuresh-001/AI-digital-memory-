@@ -1,3 +1,4 @@
+import json
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from typing import Optional
@@ -7,6 +8,12 @@ from ..auth import get_current_student
 from ..revision_planner import get_student_revision_plan
 
 router = APIRouter(prefix="/api/planner", tags=["AI Revision Planner"])
+
+class TopicPdfUpload(BaseModel):
+    name: str
+    data: str
+    size: Optional[int] = 0
+    type: Optional[str] = "application/pdf"
 
 class MarkRevisedRequest(BaseModel):
     notes: Optional[str] = "Completed revision session"
@@ -96,4 +103,43 @@ def mark_topic_revised(
         "status": "success",
         "message": f"Topic '{topic['title']}' marked as revised today. Memory stability updated!",
         "topic": updated_topic
+    }
+
+@router.post("/topics/{topic_id}/pdf")
+def upload_planner_topic_pdf(
+    topic_id: int,
+    req: TopicPdfUpload,
+    current_student: dict = Depends(get_current_student)
+):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, title, attachments FROM topics WHERE id = ? AND student_id = ?", (topic_id, current_student["id"]))
+    row = cursor.fetchone()
+    if not row:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Topic not found.")
+
+    existing = row["attachments"] or "[]"
+    try:
+        atts = json.loads(existing) if isinstance(existing, str) else existing
+    except Exception:
+        atts = []
+
+    new_pdf = {
+        "id": "pdf_" + datetime.now().strftime("%Y%m%d%H%M%S"),
+        "name": req.name,
+        "size": req.size,
+        "type": req.type or "application/pdf",
+        "data": req.data,
+        "uploaded_at": datetime.now().isoformat()
+    }
+    atts.append(new_pdf)
+    cursor.execute("UPDATE topics SET attachments = ? WHERE id = ?", (json.dumps(atts), topic_id))
+    conn.commit()
+    conn.close()
+
+    return {
+        "status": "success",
+        "message": f"Topic PDF '{req.name}' uploaded successfully to '{row['title']}'.",
+        "attachment": new_pdf
     }

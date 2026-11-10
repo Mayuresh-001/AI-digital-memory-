@@ -1,4 +1,5 @@
 import math
+import json
 from datetime import datetime
 from .database import get_db
 from .ml_engine import ml_engine
@@ -133,6 +134,7 @@ def calculate_topic_revision_status(topic_data: dict) -> dict:
         "revisions_count": revisions,
         "study_duration_minutes": duration,
         "notes": topic_data.get("notes", ""),
+        "attachments": topic_data.get("attachments", []),
         "retention_health_pct": combined_retention,
         "rule_retention_pct": rule_retention_pct,
         "ml_retention_pct": ml_retention_pct,
@@ -151,7 +153,7 @@ def get_student_revision_plan(student_id: int) -> list[dict]:
     # Query all topics for this student with their most recent study session
     cursor.execute("""
     SELECT 
-        t.id, t.title, t.difficulty, t.notes,
+        t.id, t.title, t.difficulty, t.notes, t.attachments,
         s.name AS subject_name, s.color AS subject_color,
         ss.study_date, ss.duration_minutes, ss.quiz_score, 
         ss.mistakes_count, ss.revisions_count
@@ -174,6 +176,15 @@ def get_student_revision_plan(student_id: int) -> list[dict]:
     plan = []
     for r in rows:
         topic_info = dict(r)
+        raw_att = topic_info.get("attachments")
+        if isinstance(raw_att, str):
+            try:
+                topic_info["attachments"] = json.loads(raw_att)
+            except Exception:
+                topic_info["attachments"] = []
+        elif not isinstance(raw_att, list):
+            topic_info["attachments"] = []
+
         analysis = calculate_topic_revision_status(topic_info)
         plan.append(analysis)
 
