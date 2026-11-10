@@ -4745,10 +4745,16 @@ function triggerSubjectContextAction(type) {
 
     if (type === "files") {
         const input = document.getElementById("new-subject-files-input");
-        if (input) input.click();
+        if (input) {
+            input.value = "";
+            input.click();
+        }
     } else if (type === "folder") {
         const input = document.getElementById("new-subject-folder-input");
-        if (input) input.click();
+        if (input) {
+            input.value = "";
+            input.click();
+        }
     } else if (type === "mentions") {
         openSubjectMentionPrompt();
     } else if (type === "actions") {
@@ -4777,6 +4783,8 @@ function handleSubjectDropzoneDragOver(e) {
     e.stopPropagation();
     const desc = document.getElementById("new-subject-desc");
     if (desc) desc.classList.add("border-blue-500", "bg-blue-50/50");
+    const dropzone = document.getElementById("subject-file-dropzone");
+    if (dropzone) dropzone.classList.add("border-blue-500", "bg-blue-100/60");
 }
 
 function handleSubjectDropzoneDragLeave(e) {
@@ -4784,6 +4792,8 @@ function handleSubjectDropzoneDragLeave(e) {
     e.stopPropagation();
     const desc = document.getElementById("new-subject-desc");
     if (desc) desc.classList.remove("border-blue-500", "bg-blue-50/50");
+    const dropzone = document.getElementById("subject-file-dropzone");
+    if (dropzone) dropzone.classList.remove("border-blue-500", "bg-blue-100/60");
 }
 
 async function handleSubjectDropzoneDrop(e) {
@@ -4791,6 +4801,8 @@ async function handleSubjectDropzoneDrop(e) {
     e.stopPropagation();
     const desc = document.getElementById("new-subject-desc");
     if (desc) desc.classList.remove("border-blue-500", "bg-blue-50/50");
+    const dropzone = document.getElementById("subject-file-dropzone");
+    if (dropzone) dropzone.classList.remove("border-blue-500", "bg-blue-100/60");
     if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) {
         await processSelectedSubjectFiles(e.dataTransfer.files, "file");
     }
@@ -4798,8 +4810,15 @@ async function handleSubjectDropzoneDrop(e) {
 
 async function processSelectedSubjectFiles(fileList, defaultType = "file") {
     if (!state.newSubjectFiles) state.newSubjectFiles = [];
+    let addedCount = 0;
+    const descEl = document.getElementById("new-subject-desc");
+    
     for (let i = 0; i < fileList.length; i++) {
         const file = fileList[i];
+        if (file.size > 25 * 1024 * 1024) {
+            showToast(`File ${file.name} is too large (max 25MB)`, "error");
+            continue;
+        }
         try {
             const dataUrl = await readFileAsDataURL(file);
             const folderPath = file.webkitRelativePath ? file.webkitRelativePath.split("/")[0] : null;
@@ -4813,9 +4832,21 @@ async function processSelectedSubjectFiles(fileList, defaultType = "file") {
                 folder_name: folderPath,
                 uploaded_at: new Date().toISOString()
             });
+            addedCount++;
+
+            // Insert file tag into description textarea
+            if (descEl) {
+                const tag = `📎 [${file.name}]`;
+                if (!descEl.value.includes(tag)) {
+                    descEl.value = descEl.value ? (descEl.value.trim() + "\n" + tag) : tag;
+                }
+            }
         } catch (err) {
             showToast("Failed to read " + file.name, "error");
         }
+    }
+    if (addedCount > 0) {
+        showToast(`Added ${addedCount} file${addedCount === 1 ? '' : 's'} to description!`, "success");
     }
     renderNewSubjectFilesPreview();
 }
@@ -4908,10 +4939,20 @@ function renderNewSubjectFilesPreview() {
 
 function removeNewSubjectContextItem(idx) {
     const fileCount = (state.newSubjectFiles || []).length;
+    let removedItem = null;
     if (idx < fileCount) {
-        state.newSubjectFiles.splice(idx, 1);
+        removedItem = state.newSubjectFiles.splice(idx, 1)[0];
     } else {
-        state.newSubjectContext.splice(idx - fileCount, 1);
+        removedItem = state.newSubjectContext.splice(idx - fileCount, 1)[0];
+    }
+    if (removedItem && removedItem.name) {
+        const descEl = document.getElementById("new-subject-desc");
+        if (descEl) {
+            descEl.value = descEl.value
+                .replace(`📎 [${removedItem.name}]`, "")
+                .replace(`@${removedItem.name}`, "")
+                .trim();
+        }
     }
     renderNewSubjectFilesPreview();
 }

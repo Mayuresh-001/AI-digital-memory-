@@ -882,68 +882,97 @@
                     </div>
                 </div>
 
-                <!-- Description & Add Context (Image 3 implementation) -->
+                <!-- Description & Add Context (Image 3 implementation with direct attach button and dropzone) -->
                 <div class="relative">
                     <div class="flex items-center justify-between mb-1.5">
-                        <label class="block text-xs font-bold text-slate-700">Course Description & Context</label>
+                        <label class="block text-xs font-bold text-slate-700">Course Description & Attached Files</label>
                         
-                        <!-- Add Context Dropdown Button -->
-                        <div class="relative">
+                        <div class="flex items-center gap-2">
+                            <!-- Direct Attach Files Button -->
                             <button type="button" 
-                                    id="subject-add-context-btn" 
-                                    onclick="toggleSubjectContextDropdown(event)" 
-                                    class="px-2.5 py-1 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-lg flex items-center gap-1.5 transition shadow-2xs group cursor-pointer">
-                                <i class="fas fa-plus text-[10px] text-blue-600 group-hover:rotate-90 transition-transform"></i>
-                                <span>Add Context</span>
-                                <i class="fas fa-chevron-down text-[9px] text-slate-400"></i>
+                                    onclick="triggerSubjectContextAction('files')" 
+                                    class="px-2.5 py-1 text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg flex items-center gap-1.5 transition cursor-pointer shadow-2xs">
+                                <i class="fas fa-paperclip text-blue-600"></i>
+                                <span>Attach File</span>
                             </button>
 
-                            <!-- Add Context Floating Popup (Styled exactly like Image 3) -->
-                            <div id="subject-context-dropdown" 
-                                 class="hidden absolute right-0 mt-1.5 w-44 bg-[#14151b] text-slate-200 rounded-xl shadow-2xl border border-slate-700/80 p-1.5 z-50 text-xs backdrop-blur-md">
-                                <div class="text-[10px] font-semibold text-slate-400 px-2.5 py-1 uppercase tracking-wider">
-                                    Add Context
-                                </div>
-                                <div class="space-y-0.5 mt-0.5">
-                                    <button type="button" onclick="triggerSubjectContextAction('files')" class="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-slate-200 hover:text-white hover:bg-slate-800 transition text-left cursor-pointer group">
-                                        <i class="fas fa-paperclip text-slate-400 group-hover:text-blue-400 w-4 text-center"></i>
-                                        <span class="font-medium">Files</span>
-                                    </button>
-                                    <button type="button" onclick="triggerSubjectContextAction('folder')" class="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-slate-200 hover:text-white hover:bg-slate-800 transition text-left cursor-pointer group">
-                                        <i class="fas fa-folder text-slate-400 group-hover:text-amber-400 w-4 text-center"></i>
-                                        <span class="font-medium">Folder</span>
-                                    </button>
-                                    <button type="button" onclick="triggerSubjectContextAction('mentions')" class="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-slate-200 hover:text-white hover:bg-slate-800 transition text-left cursor-pointer group">
-                                        <i class="fas fa-at text-slate-400 group-hover:text-purple-400 w-4 text-center"></i>
-                                        <span class="font-medium">Mentions</span>
-                                    </button>
-                                    <button type="button" onclick="triggerSubjectContextAction('actions')" class="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-slate-200 hover:text-white hover:bg-slate-800 transition text-left cursor-pointer group">
-                                        <i class="far fa-edit text-slate-400 group-hover:text-emerald-400 w-4 text-center"></i>
-                                        <span class="font-medium">Actions</span>
-                                    </button>
-                                    <button type="button" onclick="triggerSubjectContextAction('browser')" class="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-slate-200 hover:text-white hover:bg-slate-800 transition text-left cursor-pointer group">
-                                        <i class="fab fa-chrome text-slate-400 group-hover:text-sky-400 w-4 text-center"></i>
-                                        <span class="font-medium">Browser</span>
-                                    </button>
+                            <!-- Add Context Dropdown Button (Matching Photo 3) -->
+                            <div class="relative">
+                                <button type="button" 
+                                        id="subject-add-context-btn" 
+                                        onclick="toggleSubjectContextDropdown(event)" 
+                                        class="px-2.5 py-1 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-lg flex items-center gap-1.5 transition shadow-2xs group cursor-pointer">
+                                    <i class="fas fa-plus text-[10px] text-blue-600 group-hover:rotate-90 transition-transform"></i>
+                                    <span>Add Context</span>
+                                    <i class="fas fa-chevron-down text-[9px] text-slate-400"></i>
+                                </button>
+
+                                <!-- Add Context Floating Popup (Styled exactly like Image 3) -->
+                                <div id="subject-context-dropdown" 
+                                     class="hidden absolute right-0 mt-1.5 w-44 bg-[#14151b] text-slate-200 rounded-xl shadow-2xl border border-slate-700/80 p-1.5 z-50 text-xs backdrop-blur-md">
+                                    <div class="text-[10px] font-semibold text-slate-400 px-2.5 py-1 uppercase tracking-wider">
+                                        Add Context
+                                    </div>
+                                    <div class="space-y-0.5 mt-0.5">
+                                        <button type="button" onclick="triggerSubjectContextAction('files')" class="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-slate-200 hover:text-white hover:bg-slate-800 transition text-left cursor-pointer group">
+                                            <i class="fas fa-paperclip text-slate-400 group-hover:text-blue-400 w-4 text-center"></i>
+                                            <span class="font-medium">Files</span>
+                                        </button>
+                                        <button type="button" onclick="triggerSubjectContextAction('folder')" class="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-slate-200 hover:text-white hover:bg-slate-800 transition text-left cursor-pointer group">
+                                            <i class="fas fa-folder text-slate-400 group-hover:text-amber-400 w-4 text-center"></i>
+                                            <span class="font-medium">Folder</span>
+                                        </button>
+                                        <button type="button" onclick="triggerSubjectContextAction('mentions')" class="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-slate-200 hover:text-white hover:bg-slate-800 transition text-left cursor-pointer group">
+                                            <i class="fas fa-at text-slate-400 group-hover:text-purple-400 w-4 text-center"></i>
+                                            <span class="font-medium">Mentions</span>
+                                        </button>
+                                        <button type="button" onclick="triggerSubjectContextAction('actions')" class="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-slate-200 hover:text-white hover:bg-slate-800 transition text-left cursor-pointer group">
+                                            <i class="far fa-edit text-slate-400 group-hover:text-emerald-400 w-4 text-center"></i>
+                                            <span class="font-medium">Actions</span>
+                                        </button>
+                                        <button type="button" onclick="triggerSubjectContextAction('browser')" class="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-slate-200 hover:text-white hover:bg-slate-800 transition text-left cursor-pointer group">
+                                            <i class="fab fa-chrome text-slate-400 group-hover:text-sky-400 w-4 text-center"></i>
+                                            <span class="font-medium">Browser</span>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
                     <!-- Hidden Inputs for Files and Folders -->
-                    <input id="new-subject-files-input" type="file" multiple class="hidden" onchange="handleSubjectFilesSelect(event)">
-                    <input id="new-subject-folder-input" type="file" webkitdirectory directory multiple class="hidden" onchange="handleSubjectFolderSelect(event)">
+                    <input id="new-subject-files-input" type="file" multiple accept=".pdf,.doc,.docx,.ppt,.pptx,.txt,.md,.png,.jpg,.jpeg,.zip,.csv,.xls,.xlsx" style="display:none" onchange="handleSubjectFilesSelect(event)">
+                    <input id="new-subject-folder-input" type="file" webkitdirectory directory multiple style="display:none" onchange="handleSubjectFolderSelect(event)">
 
+                    <!-- Description Textarea with Drag & Drop -->
                     <textarea id="new-subject-desc" 
                               rows="3" 
-                              placeholder="Course overview, syllabus objectives, or drag & drop files here..." 
+                              placeholder="Course overview, syllabus objectives, formulas, or drag & drop files here..." 
+                              ondragenter="handleSubjectDropzoneDragOver(event)"
                               ondragover="handleSubjectDropzoneDragOver(event)"
                               ondragleave="handleSubjectDropzoneDragLeave(event)"
                               ondrop="handleSubjectDropzoneDrop(event)"
                               class="w-full p-2.5 text-xs rounded-lg border border-slate-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition"></textarea>
                     
-                    <div class="flex items-center justify-between text-[10px] text-slate-400 mt-1">
-                        <span>Drop files or click <strong>+ Add Context</strong> to attach syllabus, lecture folders, links</span>
+                    <!-- Dedicated Clickable File Upload Dropzone in Description -->
+                    <div id="subject-file-dropzone" 
+                         onclick="triggerSubjectContextAction('files')"
+                         ondragenter="handleSubjectDropzoneDragOver(event)"
+                         ondragover="handleSubjectDropzoneDragOver(event)"
+                         ondragleave="handleSubjectDropzoneDragLeave(event)"
+                         ondrop="handleSubjectDropzoneDrop(event)"
+                         class="border-2 border-dashed border-slate-200 hover:border-blue-400 bg-slate-50/70 hover:bg-blue-50/50 rounded-xl p-3 text-center cursor-pointer transition group mt-2">
+                        <div class="flex items-center justify-center gap-2 pointer-events-none">
+                            <div class="w-7 h-7 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs group-hover:scale-110 transition shadow-2xs">
+                                <i class="fas fa-file-upload"></i>
+                            </div>
+                            <span class="text-xs font-semibold text-slate-700 group-hover:text-blue-600 transition">
+                                Click to attach files from laptop or drag & drop here
+                            </span>
+                        </div>
+                        <p class="text-[10px] text-slate-400 pointer-events-none mt-0.5">
+                            Attach syllabus PDFs, lecture slides, documents, or notes to this subject
+                        </p>
                     </div>
 
                     <!-- Uploaded Context & Attachments Preview Area -->
@@ -1230,6 +1259,6 @@
     </div>
 
     <!-- Main JavaScript Bundle -->
-    <script src="/static/js/app.js"></script>
+    <script src="/static/js/app.js?v=20261111_03"></script>
 </body>
 </html>
