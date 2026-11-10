@@ -25,6 +25,10 @@ def run_tests():
     # 1. Initialize DB and Seed Data
     init_db()
     seed_demo_data()
+    conn = get_db()
+    conn.cursor().execute("DELETE FROM topics WHERE title LIKE 'BJT vs MOSFET%'")
+    conn.commit()
+    conn.close()
     print("  [OK] Database schema initialized and demo student data verified")
 
     # 2. Test Student Auth Login
@@ -42,6 +46,27 @@ def run_tests():
     topics = list_topics(current_student=student)["topics"]
     assert len(topics) >= 8
     print(f"  [OK] Retrieved {len(subs)} subjects and {len(topics)} topics for student")
+
+    # Test creating subject with attachments/context (Files, Folders, Links)
+    from backend.routes.subject_routes import create_subject, SubjectCreate
+    new_sub_data = SubjectCreate(
+        name="Discrete Mathematics",
+        code="MATH230",
+        color="#0891b2",
+        description="Combinatorics, graph theory, propositional logic and proofs.",
+        attachments=[{
+            "id": "ctx_sub_1",
+            "name": "Discrete_Math_Syllabus.pdf",
+            "size": 18500,
+            "type": "application/pdf",
+            "data": "data:application/pdf;base64,JVBERi0xLjQK...",
+            "context_type": "file",
+            "uploaded_at": "2026-11-11T02:00:00Z"
+        }]
+    )
+    created_sub = create_subject(new_sub_data, current_student=student)
+    assert created_sub["status"] == "success"
+    print(f"  [OK] Subject created with context attachments: ID {created_sub['id']}")
 
     # 4. Test Study Sessions & Digital Memory
     sessions_res = list_sessions(current_student=student)["sessions"]

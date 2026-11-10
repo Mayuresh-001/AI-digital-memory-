@@ -12,6 +12,10 @@ class SubjectCreate(BaseModel):
     code: Optional[str] = ""
     color: Optional[str] = "#2563eb"
     description: Optional[str] = ""
+    attachments: Optional[Any] = []
+
+class SubjectAttachmentsUpdate(BaseModel):
+    attachments: Any
 
 class TopicCreate(BaseModel):
     subject_id: int
@@ -37,7 +41,21 @@ def list_subjects(current_student: dict = Depends(get_current_student)):
     """, (current_student["id"],))
     rows = cursor.fetchall()
     conn.close()
-    return {"status": "success", "subjects": [dict(r) for r in rows]}
+
+    parsed_subjects = []
+    for r in rows:
+        d = dict(r)
+        raw_att = d.get("attachments")
+        if raw_att:
+            try:
+                d["attachments"] = json.loads(raw_att) if isinstance(raw_att, str) else raw_att
+            except Exception:
+                d["attachments"] = []
+        else:
+            d["attachments"] = []
+        parsed_subjects.append(d)
+
+    return {"status": "success", "subjects": parsed_subjects}
 
 @router.post("/subjects")
 def create_subject(req: SubjectCreate, current_student: dict = Depends(get_current_student)):
@@ -46,15 +64,31 @@ def create_subject(req: SubjectCreate, current_student: dict = Depends(get_curre
 
     conn = get_db()
     cursor = conn.cursor()
+    att_str = json.dumps(req.attachments) if isinstance(req.attachments, list) else (req.attachments or "[]")
     cursor.execute("""
-    INSERT INTO subjects (student_id, name, code, color, description)
-    VALUES (?, ?, ?, ?, ?)
-    """, (current_student["id"], req.name.strip(), req.code.strip(), req.color, req.description.strip()))
+    INSERT INTO subjects (student_id, name, code, color, description, attachments)
+    VALUES (?, ?, ?, ?, ?, ?)
+    """, (current_student["id"], req.name.strip(), req.code.strip(), req.color, req.description.strip(), att_str))
     subject_id = cursor.lastrowid
     conn.commit()
     conn.close()
 
     return {"status": "success", "message": "Subject created successfully.", "id": subject_id}
+
+@router.put("/subjects/{subject_id}/attachments")
+def update_subject_attachments(subject_id: int, req: SubjectAttachmentsUpdate, current_student: dict = Depends(get_current_student)):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id FROM subjects WHERE id = ? AND student_id = ?", (subject_id, current_student["id"]))
+    if not cursor.fetchone():
+        conn.close()
+        raise HTTPException(status_code=404, detail="Subject not found.")
+
+    att_str = json.dumps(req.attachments) if isinstance(req.attachments, list) else str(req.attachments)
+    cursor.execute("UPDATE subjects SET attachments = ? WHERE id = ? AND student_id = ?", (att_str, subject_id, current_student["id"]))
+    conn.commit()
+    conn.close()
+    return {"status": "success", "message": "Subject attachments updated successfully."}
 
 @router.delete("/subjects/{subject_id}")
 def delete_subject(subject_id: int, current_student: dict = Depends(get_current_student)):

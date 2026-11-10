@@ -68,6 +68,7 @@ def init_db():
         code TEXT DEFAULT '',
         color TEXT DEFAULT '#2563eb',
         description TEXT DEFAULT '',
+        attachments TEXT DEFAULT '[]',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE
     );
@@ -174,6 +175,16 @@ def init_db():
         source TEXT DEFAULT 'historical'
     );
     """)
+
+    # Safe Schema Migrations for Attachments
+    try:
+        cursor.execute("ALTER TABLE subjects ADD COLUMN attachments TEXT DEFAULT '[]'")
+    except sqlite3.OperationalError:
+        pass
+    try:
+        cursor.execute("ALTER TABLE topics ADD COLUMN attachments TEXT DEFAULT '[]'")
+    except sqlite3.OperationalError:
+        pass
 
     conn.commit()
     conn.close()

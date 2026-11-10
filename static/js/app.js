@@ -5,6 +5,18 @@
 const API_BASE = "/api";
 const IS_STATIC_HOST = window.location.hostname.includes("github.io") || window.location.protocol === "file:";
 
+// Safe HTML Escape Utility Function (defined globally for all templates & renders)
+function escapeHtml(str) {
+    if (str === null || str === undefined) return "";
+    return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+window.escapeHtml = escapeHtml;
+
 // Application State
 const state = {
     token: localStorage.getItem("adm_token") || null,
@@ -16,6 +28,8 @@ const state = {
     quizAnswers: {},
     subjects: [],
     topics: [],
+    newSubjectFiles: [],
+    newSubjectContext: [],
     newTopicFiles: [],
     activeTopicDetails: null,
     plannerViewMode: "table",
@@ -2878,7 +2892,7 @@ const LocalDB = {
 
         const url = endpoint.split("?")[0];
         const method = options.method || "GET";
-        const body = options.body ? JSON.parse(options.body) : {};
+        const body = options.body ? (typeof options.body === "string" ? JSON.parse(options.body) : options.body) : {};
 
         // 1. REGISTER NEW STUDENT
         if (url === "/auth/register" && method === "POST") {
@@ -3064,18 +3078,39 @@ const LocalDB = {
         // Subjects & Topics
         if (url === "/subjects") {
             if (method === "GET") {
-                const subWithCounts = mySubjects.map(s => ({
-                    ...s,
-                    topic_count: myTopics.filter(t => t.subject_id === s.id).length
-                }));
+                const subWithCounts = mySubjects.map(s => {
+                    let atts = s.attachments || [];
+                    if (typeof atts === "string") {
+                        try { atts = JSON.parse(atts); } catch(e) { atts = []; }
+                    }
+                    return {
+                        ...s,
+                        attachments: atts,
+                        topic_count: myTopics.filter(t => t.subject_id === s.id).length
+                    };
+                });
                 return { status: "success", subjects: subWithCounts };
             }
             if (method === "POST") {
-                const newSub = { id: Date.now(), student_id: currentStudentIdNum, ...body };
+                const newSub = { 
+                    id: Date.now(), 
+                    student_id: currentStudentIdNum, 
+                    ...body,
+                    attachments: body.attachments || []
+                };
                 subjects.push(newSub);
                 localStorage.setItem("adm_subjects", JSON.stringify(subjects));
                 return { status: "success", message: "Subject created.", id: newSub.id };
             }
+        }
+        if (url.startsWith("/subjects/") && url.endsWith("/attachments") && method === "PUT") {
+            const id = parseInt(url.split("/")[2]);
+            const sub = subjects.find(s => s.id === id);
+            if (sub) {
+                sub.attachments = body.attachments || [];
+                localStorage.setItem("adm_subjects", JSON.stringify(subjects));
+            }
+            return { status: "success", message: "Subject attachments updated." };
         }
         if (url.startsWith("/subjects/") && method === "DELETE") {
             const id = parseInt(url.split("/")[2]);
@@ -4680,6 +4715,302 @@ function removeNewTopicFile(idx) {
     renderNewTopicFilesPreview();
 }
 
+// -------------------------------------------------------------------------
+// Add Context Dropdown & Context Materials Handlers (Matching Image 3)
+// -------------------------------------------------------------------------
+function toggleSubjectContextDropdown(e) {
+    if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+    const menu = document.getElementById("subject-context-dropdown");
+    if (!menu) return;
+    menu.classList.toggle("hidden");
+}
+
+// Close dropdown on outside clicks
+window.addEventListener("click", function(e) {
+    const menu = document.getElementById("subject-context-dropdown");
+    const btn = document.getElementById("subject-add-context-btn");
+    if (menu && !menu.classList.contains("hidden")) {
+        if (!menu.contains(e.target) && (!btn || !btn.contains(e.target))) {
+            menu.classList.add("hidden");
+        }
+    }
+});
+
+function triggerSubjectContextAction(type) {
+    const menu = document.getElementById("subject-context-dropdown");
+    if (menu) menu.classList.add("hidden");
+
+    if (type === "files") {
+        const input = document.getElementById("new-subject-files-input");
+        if (input) input.click();
+    } else if (type === "folder") {
+        const input = document.getElementById("new-subject-folder-input");
+        if (input) input.click();
+    } else if (type === "mentions") {
+        openSubjectMentionPrompt();
+    } else if (type === "actions") {
+        openSubjectActionsPrompt();
+    } else if (type === "browser") {
+        openSubjectBrowserPrompt();
+    }
+}
+
+async function handleSubjectFilesSelect(e) {
+    if (e.target && e.target.files && e.target.files.length) {
+        await processSelectedSubjectFiles(e.target.files, "file");
+        e.target.value = "";
+    }
+}
+
+async function handleSubjectFolderSelect(e) {
+    if (e.target && e.target.files && e.target.files.length) {
+        await processSelectedSubjectFiles(e.target.files, "folder");
+        e.target.value = "";
+    }
+}
+
+function handleSubjectDropzoneDragOver(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const desc = document.getElementById("new-subject-desc");
+    if (desc) desc.classList.add("border-blue-500", "bg-blue-50/50");
+}
+
+function handleSubjectDropzoneDragLeave(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const desc = document.getElementById("new-subject-desc");
+    if (desc) desc.classList.remove("border-blue-500", "bg-blue-50/50");
+}
+
+async function handleSubjectDropzoneDrop(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const desc = document.getElementById("new-subject-desc");
+    if (desc) desc.classList.remove("border-blue-500", "bg-blue-50/50");
+    if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) {
+        await processSelectedSubjectFiles(e.dataTransfer.files, "file");
+    }
+}
+
+async function processSelectedSubjectFiles(fileList, defaultType = "file") {
+    if (!state.newSubjectFiles) state.newSubjectFiles = [];
+    for (let i = 0; i < fileList.length; i++) {
+        const file = fileList[i];
+        try {
+            const dataUrl = await readFileAsDataURL(file);
+            const folderPath = file.webkitRelativePath ? file.webkitRelativePath.split("/")[0] : null;
+            state.newSubjectFiles.push({
+                id: "ctx_" + Date.now() + "_" + Math.random().toString(36).substr(2, 5),
+                name: file.name,
+                size: file.size,
+                type: file.type || "application/octet-stream",
+                data: dataUrl,
+                context_type: folderPath ? "folder" : defaultType,
+                folder_name: folderPath,
+                uploaded_at: new Date().toISOString()
+            });
+        } catch (err) {
+            showToast("Failed to read " + file.name, "error");
+        }
+    }
+    renderNewSubjectFilesPreview();
+}
+
+function renderNewSubjectFilesPreview() {
+    const container = document.getElementById("subject-context-preview");
+    if (!container) return;
+    const allItems = [...(state.newSubjectFiles || []), ...(state.newSubjectContext || [])];
+    if (allItems.length === 0) {
+        container.innerHTML = "";
+        container.classList.add("hidden");
+        return;
+    }
+    container.classList.remove("hidden");
+    container.innerHTML = allItems.map((item, idx) => {
+        if (item.context_type === "link") {
+            return `
+                <div class="flex items-center justify-between p-2 rounded-lg bg-sky-50/80 border border-sky-100 text-xs">
+                    <div class="flex items-center gap-2 overflow-hidden">
+                        <i class="fab fa-chrome text-sky-600 text-sm flex-shrink-0"></i>
+                        <div class="truncate">
+                            <span class="font-medium text-slate-800">${escapeHtml(item.name || item.url)}</span>
+                            <span class="text-[10px] text-sky-600 block truncate">${escapeHtml(item.url)}</span>
+                        </div>
+                    </div>
+                    <button type="button" onclick="removeNewSubjectContextItem(${idx})" class="text-slate-400 hover:text-rose-500 p-1 cursor-pointer" title="Remove link">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `;
+        }
+        if (item.context_type === "mention") {
+            return `
+                <div class="flex items-center justify-between p-2 rounded-lg bg-purple-50/80 border border-purple-100 text-xs">
+                    <div class="flex items-center gap-2 overflow-hidden">
+                        <i class="fas fa-at text-purple-600 text-sm flex-shrink-0"></i>
+                        <div class="truncate">
+                            <span class="font-semibold text-purple-900">${escapeHtml(item.name)}</span>
+                            <span class="text-[10px] text-purple-500 ml-1">Mentioned Concept / Topic</span>
+                        </div>
+                    </div>
+                    <button type="button" onclick="removeNewSubjectContextItem(${idx})" class="text-slate-400 hover:text-rose-500 p-1 cursor-pointer" title="Remove mention">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `;
+        }
+        if (item.context_type === "folder") {
+            return `
+                <div class="flex items-center justify-between p-2 rounded-lg bg-amber-50/80 border border-amber-100 text-xs">
+                    <div class="flex items-center gap-2 overflow-hidden">
+                        <i class="fas fa-folder text-amber-600 text-sm flex-shrink-0"></i>
+                        <div class="truncate">
+                            <span class="font-medium text-slate-800">${escapeHtml(item.name)}</span>
+                            <span class="text-[10px] text-amber-700 ml-1">(${formatFileSize(item.size)}${item.folder_name ? ' • ' + escapeHtml(item.folder_name) : ''})</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-1.5 flex-shrink-0">
+                        <button type="button" onclick="previewSubjectContextFile(${idx})" class="text-blue-600 hover:text-blue-800 p-1 text-[11px] cursor-pointer" title="Preview">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <button type="button" onclick="removeNewSubjectContextItem(${idx})" class="text-slate-400 hover:text-rose-500 p-1 cursor-pointer" title="Remove file">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+        return `
+            <div class="flex items-center justify-between p-2 rounded-lg bg-blue-50/70 border border-blue-100 text-xs">
+                <div class="flex items-center gap-2 overflow-hidden">
+                    <i class="${getFileIconClass(item.name, item.type)} text-sm flex-shrink-0"></i>
+                    <div class="truncate">
+                        <span class="font-medium text-slate-800">${escapeHtml(item.name)}</span>
+                        <span class="text-[10px] text-slate-400 ml-1">(${formatFileSize(item.size)})</span>
+                    </div>
+                </div>
+                <div class="flex items-center gap-1.5 flex-shrink-0">
+                    <button type="button" onclick="previewSubjectContextFile(${idx})" class="text-blue-600 hover:text-blue-800 p-1 text-[11px] cursor-pointer" title="Preview">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button type="button" onclick="removeNewSubjectContextItem(${idx})" class="text-slate-400 hover:text-rose-500 p-1 cursor-pointer" title="Remove file">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join("");
+}
+
+function removeNewSubjectContextItem(idx) {
+    const fileCount = (state.newSubjectFiles || []).length;
+    if (idx < fileCount) {
+        state.newSubjectFiles.splice(idx, 1);
+    } else {
+        state.newSubjectContext.splice(idx - fileCount, 1);
+    }
+    renderNewSubjectFilesPreview();
+}
+
+function previewSubjectContextFile(idx) {
+    const allItems = [...(state.newSubjectFiles || []), ...(state.newSubjectContext || [])];
+    const item = allItems[idx];
+    if (!item) return;
+    openFilePreviewModal(item);
+}
+
+function openSubjectMentionPrompt() {
+    const existingTitles = (state.topics || []).map(t => t.title).filter(Boolean);
+    const suggestion = existingTitles.slice(0, 3).join(", ") || "Machine Learning, Linear Algebra";
+    const mention = prompt(`Enter topic, subject, or concept to mention in description:\n(Suggestions: ${suggestion})`);
+    if (!mention || !mention.trim()) return;
+    const cleanMention = mention.trim().replace(/^@/, "");
+    
+    // Append to description textarea
+    const descEl = document.getElementById("new-subject-desc");
+    if (descEl) {
+        descEl.value = (descEl.value ? descEl.value + " " : "") + `@${cleanMention}`;
+    }
+    if (!state.newSubjectContext) state.newSubjectContext = [];
+    state.newSubjectContext.push({
+        id: "mention_" + Date.now(),
+        name: cleanMention,
+        context_type: "mention"
+    });
+    renderNewSubjectFilesPreview();
+    showToast(`Added @${cleanMention} to description context.`, "success");
+}
+
+function openSubjectBrowserPrompt() {
+    const url = prompt("Enter web learning resource URL (e.g. course site, textbook, repository):", "https://");
+    if (!url || url === "https://" || !url.trim()) return;
+    const name = prompt("Enter a brief label for this link (optional):", url.split("/")[2] || "Web Resource");
+    if (!state.newSubjectContext) state.newSubjectContext = [];
+    state.newSubjectContext.push({
+        id: "link_" + Date.now(),
+        name: name || url,
+        url: url.trim(),
+        context_type: "link"
+    });
+    renderNewSubjectFilesPreview();
+    showToast("Web link resource attached.", "success");
+}
+
+function openSubjectActionsPrompt() {
+    const choice = prompt(
+        "Choose an Academic Action Template to insert into Description:\n" +
+        "1: Standard Course Syllabus (Overview, Weekly Modules, Objectives)\n" +
+        "2: Grading & Evaluation Weights (Quizzes, Midterms, Final Exam)\n" +
+        "3: Core Learning Outcomes & Competencies\n\n" +
+        "Enter 1, 2, or 3:"
+    );
+    const descEl = document.getElementById("new-subject-desc");
+    if (!descEl) return;
+
+    if (choice === "1") {
+        const template = "SYLLABUS & SCHEDULE:\n- Module 1: Foundational Principles & Core Concepts\n- Module 2: Intermediate Algorithms & Practical Applications\n- Module 3: Advanced Architectures & Systems Design\n- Textbook: Standard University Course Textbook (3rd Edition)";
+        descEl.value = (descEl.value ? descEl.value + "\n\n" : "") + template;
+        showToast("Inserted Course Syllabus template into Description.", "success");
+    } else if (choice === "2") {
+        const template = "GRADING & EVALUATION CRITERIA:\n- Weekly Quizzes & Active Recall: 25%\n- Midterm Examination: 30%\n- Practical Lab Projects: 20%\n- Comprehensive Final Examination: 25%";
+        descEl.value = (descEl.value ? descEl.value + "\n\n" : "") + template;
+        showToast("Inserted Grading Scheme template into Description.", "success");
+    } else if (choice === "3") {
+        const template = "LEARNING OUTCOMES:\n- Master fundamental mathematical formulas and theoretical theorems.\n- Analyze time and space complexity across core algorithms.\n- Implement production-ready data pipelines and evaluate model metrics.";
+        descEl.value = (descEl.value ? descEl.value + "\n\n" : "") + template;
+        showToast("Inserted Learning Outcomes template into Description.", "success");
+    }
+}
+
+function viewSubjectAttachmentFile(subjectId, attIdx) {
+    const sub = (state.subjects || []).find(s => s.id === subjectId);
+    if (!sub || !sub.attachments || !sub.attachments[attIdx]) {
+        showToast("Attachment not found.", "error");
+        return;
+    }
+    openFilePreviewModal(sub.attachments[attIdx]);
+}
+
+function downloadSubjectAttachmentFile(subjectId, attIdx) {
+    const sub = (state.subjects || []).find(s => s.id === subjectId);
+    if (!sub || !sub.attachments || !sub.attachments[attIdx]) {
+        showToast("Attachment not found.", "error");
+        return;
+    }
+    const att = sub.attachments[attIdx];
+    const link = document.createElement("a");
+    link.href = att.data;
+    link.download = att.name || "subject_material";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+
 function setSubjectsViewMode(mode) {
     state.subjectsViewMode = mode;
     const cardsContainer = document.getElementById("subjects-container");
@@ -4748,7 +5079,46 @@ async function loadSubjects() {
                             </button>
                         </div>
 
-                        ${sub.description ? `<p class="text-xs text-slate-600 mb-4">${sub.description}</p>` : ''}
+                        ${sub.description ? `<p class="text-xs text-slate-600 mb-2">${escapeHtml(sub.description)}</p>` : ''}
+
+                        <!-- Subject Context & Attachments (Files, Folders, Links, Mentions) -->
+                        ${sub.attachments && sub.attachments.length ? `
+                            <div class="mb-3 p-2 rounded-lg bg-slate-50 border border-slate-200/60">
+                                <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 flex items-center justify-between">
+                                    <span class="flex items-center gap-1"><i class="fas fa-folder-open text-blue-500"></i> Course Materials (${sub.attachments.length})</span>
+                                </div>
+                                <div class="flex flex-wrap gap-1.5">
+                                    ${sub.attachments.map((att, aIdx) => {
+                                        if (att.context_type === 'link') {
+                                            return `
+                                                <a href="${escapeHtml(att.url)}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-sky-50 text-sky-700 border border-sky-200 text-[10px] font-medium hover:bg-sky-100 transition" title="Open resource">
+                                                    <i class="fab fa-chrome text-[9px]"></i>
+                                                    <span class="max-w-[120px] truncate">${escapeHtml(att.name || att.url)}</span>
+                                                    <i class="fas fa-external-link-alt text-[8px] ml-0.5"></i>
+                                                </a>
+                                            `;
+                                        }
+                                        if (att.context_type === 'mention') {
+                                            return `
+                                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 border border-purple-200 text-[10px] font-medium">
+                                                    <i class="fas fa-at text-[9px]"></i>
+                                                    <span>${escapeHtml(att.name)}</span>
+                                                </span>
+                                            `;
+                                        }
+                                        return `
+                                            <div class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white text-slate-800 border border-slate-200 text-[10px] font-medium shadow-2xs">
+                                                <i class="${getFileIconClass(att.name, att.type)} text-[9px]"></i>
+                                                <span class="max-w-[120px] truncate cursor-pointer hover:text-blue-600" onclick="viewSubjectAttachmentFile(${sub.id}, ${aIdx})" title="Click to view">${escapeHtml(att.name)}</span>
+                                                <button type="button" onclick="downloadSubjectAttachmentFile(${sub.id}, ${aIdx})" class="text-slate-400 hover:text-blue-600 ml-0.5" title="Download">
+                                                    <i class="fas fa-download text-[8px]"></i>
+                                                </button>
+                                            </div>
+                                        `;
+                                    }).join("")}
+                                </div>
+                            </div>
+                        ` : ''}
 
                         <!-- Topics List with dedicated Topic PDF column -->
                         <div class="space-y-2.5 mt-4 pt-3 border-t border-slate-100">
@@ -5020,18 +5390,37 @@ async function handleAddSubjectSubmit(e) {
     const code = document.getElementById("new-subject-code").value;
     const color = document.getElementById("new-subject-color").value;
     const description = document.getElementById("new-subject-desc").value;
+    const allAttachments = [...(state.newSubjectFiles || []), ...(state.newSubjectContext || [])];
 
     try {
         const res = await apiRequest("/subjects", {
             method: "POST",
-            body: JSON.stringify({ name, code, color, description })
+            body: JSON.stringify({ name, code, color, description, attachments: allAttachments })
         });
         showToast(res.message, "success");
         closeModal("add-subject-modal");
+        state.newSubjectFiles = [];
+        state.newSubjectContext = [];
+        renderNewSubjectFilesPreview();
+        const nEl = document.getElementById("new-subject-name");
+        if (nEl) nEl.value = "";
+        const cEl = document.getElementById("new-subject-code");
+        if (cEl) cEl.value = "";
+        const dEl = document.getElementById("new-subject-desc");
+        if (dEl) dEl.value = "";
         loadSubjects();
     } catch (err) {
         showToast(err.message, "error");
     }
+}
+
+function openAddSubjectModal() {
+    state.newSubjectFiles = [];
+    state.newSubjectContext = [];
+    renderNewSubjectFilesPreview();
+    const menu = document.getElementById("subject-context-dropdown");
+    if (menu) menu.classList.add("hidden");
+    openModal("add-subject-modal");
 }
 
 async function handleAddTopicSubmit(e) {
